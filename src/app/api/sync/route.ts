@@ -6,10 +6,8 @@ export async function POST() {
     const apiKey = process.env.TICKET_TAILOR_API_KEY;
     if (!apiKey) throw new Error("Missing Ticket Tailor API Key");
 
-    // Ticket Tailor requires Basic Auth using the API key as the username
     const authHeader = 'Basic ' + Buffer.from(`${apiKey}:`).toString('base64');
 
-    // Fetch issued tickets from Ticket Tailor
     const response = await fetch('https://api.tickettailor.com/v1/issued_tickets', {
       headers: {
         'Accept': 'application/json',
@@ -24,24 +22,19 @@ export async function POST() {
     }
 
     const data = await response.json();
-    
-    // Ticket Tailor typically returns the array of tickets in a 'data' property
     const tickets = data.data || data; 
 
     if (!Array.isArray(tickets)) {
         return NextResponse.json({ error: 'Unexpected API response format' }, { status: 500 });
     }
 
-    // Format the incoming data to match our Supabase schema
     const attendeesToUpsert = tickets.map((ticket: any) => ({
       ticket_id: ticket.id,
       first_name: ticket.first_name || ticket.full_name?.split(' ')[0] || '',
       last_name: ticket.last_name || ticket.full_name?.split(' ').slice(1).join(' ') || '',
       email: ticket.email || '',
-      // We don't overwrite checked_in status if it already exists in Supabase
     }));
 
-    // Upsert into Supabase (insert new, ignore/update existing based on unique ticket_id)
     const { error } = await supabaseAdmin
       .from('attendees')
       .upsert(attendeesToUpsert, { onConflict: 'ticket_id', ignoreDuplicates: true });

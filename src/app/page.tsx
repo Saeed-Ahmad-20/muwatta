@@ -40,16 +40,22 @@ export default function AttendanceTracker() {
     setSyncing(true)
     try {
       const response = await fetch('/api/sync', { method: 'POST' })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const result = await response.json()
       
       if (result.success) {
-        alert(`Successfully synced from Ticket Tailor!`)
-        fetchAttendees() // Reload the list
+        alert(`Successfully synced ${result.count} tickets from Ticket Tailor!`)
+        fetchAttendees()
       } else {
         alert(`Sync failed: ${result.error}`)
       }
     } catch (error) {
       console.error("Failed to sync", error)
+      alert("Failed to reach the sync API. Check the console for details.")
     }
     setSyncing(false)
   }
