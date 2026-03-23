@@ -16,7 +16,6 @@ export default function NavigationShell({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   
-  // Sidebar accordion states
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
@@ -42,7 +41,6 @@ export default function NavigationShell({
     }
   }
 
-  // Grouped Navigation Links
   const publicLinks = [
     { name: 'Home', href: '/' },
   ]
@@ -54,6 +52,7 @@ export default function NavigationShell({
 
   const adminLinks = [
     { name: 'Attendees DB', href: '/admin/attendees' },
+    { name: 'Pending Approvals', href: '/admin/approvals' },
   ]
 
   const renderLink = (link: { name: string, href: string }, isNested: boolean = false) => {
@@ -95,7 +94,6 @@ export default function NavigationShell({
             {publicLinks.map(link => renderLink(link, false))}
           </div>
 
-          {/* ATTENDEE FOLDER */}
           <div className="mt-6 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -126,7 +124,6 @@ export default function NavigationShell({
             </div>
           </div>
 
-          {/* ADMIN FOLDER */}
           {isAuthenticated && (
             <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
