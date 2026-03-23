@@ -15,7 +15,10 @@ export default function NavigationShell({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  
+  // Sidebar accordion states
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
   
   const pathname = usePathname()
@@ -39,14 +42,18 @@ export default function NavigationShell({
     }
   }
 
-  // Added "Register Attendance" below Home
+  // Grouped Navigation Links
   const publicLinks = [
     { name: 'Home', href: '/' },
-    { name: 'Register Attendance', href: '/register' },
+  ]
+
+  const attendeeLinks = [
+    { name: 'Register Attendance', href: '/attendee/register' },
+    { name: 'My Details', href: '/attendee/my-details' },
   ]
 
   const adminLinks = [
-    { name: 'Attendees', href: '/admin/attendees' },
+    { name: 'Attendees DB', href: '/admin/attendees' },
   ]
 
   const renderLink = (link: { name: string, href: string }, isNested: boolean = false) => {
@@ -58,7 +65,7 @@ export default function NavigationShell({
         href={link.href}
         title={isCollapsed ? link.name : ''} 
         className={`flex items-center py-3 rounded transition-colors duration-200 
-          ${isActive ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'} 
+          ${isActive ? 'bg-brand-burgundy-dark text-brand-gold' : 'text-gray-300 hover:bg-brand-burgundy-dark hover:text-brand-gold'} 
           ${isCollapsed ? 'justify-center px-0' : (isNested ? 'pl-8 pr-4' : 'px-4')}
         `}
       >
@@ -74,21 +81,54 @@ export default function NavigationShell({
   return (
     <div className="flex min-h-screen bg-gray-50">
       
-      <aside className={`bg-black text-white flex flex-col fixed h-full z-20 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-16' : 'w-64'}`}>
+      <aside className={`bg-brand-burgundy text-white flex flex-col fixed h-full z-20 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-16' : 'w-64'}`}>
         
-        <div className={`p-6 flex items-center h-20 ${isCollapsed ? 'justify-center px-0' : ''}`}>
-          <h2 className="text-xl font-bold tracking-wider overflow-hidden whitespace-nowrap">
+        <div className={`p-6 flex items-center h-20 border-b border-brand-burgundy-dark ${isCollapsed ? 'justify-center px-0' : ''}`}>
+          <h2 className="text-xl font-bold tracking-wider overflow-hidden whitespace-nowrap text-brand-gold">
             {isCollapsed ? 'M' : 'Muwatta'}
           </h2>
         </div>
         
         <nav className="flex-1 px-3 mt-4 overflow-y-auto overflow-x-hidden">
+          
           <div className="space-y-2">
             {publicLinks.map(link => renderLink(link, false))}
           </div>
 
+          {/* ATTENDEE FOLDER */}
+          <div className="mt-6 pt-4 border-t border-brand-burgundy-dark">
+            <button
+              onClick={() => {
+                if (isCollapsed) {
+                  setIsCollapsed(false)
+                  setIsAttendeeExpanded(true)
+                } else {
+                  setIsAttendeeExpanded(!isAttendeeExpanded)
+                }
+              }}
+              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'justify-center px-0' : 'px-4 justify-between hover:bg-brand-burgundy-dark'}`}
+              title={isCollapsed ? "Attendee Tools" : ""}
+            >
+              {isCollapsed ? (
+                <span className="font-bold text-lg leading-none text-brand-gold">U</span>
+              ) : (
+                <>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee Tools</span>
+                  <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </>
+              )}
+            </button>
+
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${(isAttendeeExpanded && !isCollapsed) ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+              <div className="space-y-2">
+                {attendeeLinks.map(link => renderLink(link, true))}
+              </div>
+            </div>
+          </div>
+
+          {/* ADMIN FOLDER */}
           {isAuthenticated && (
-            <div className="mt-6 pt-4 border-t border-gray-800">
+            <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
                 onClick={() => {
                   if (isCollapsed) {
@@ -98,29 +138,20 @@ export default function NavigationShell({
                     setIsAdminExpanded(!isAdminExpanded)
                   }
                 }}
-                className={`w-full flex items-center py-2 text-gray-400 hover:text-white transition-colors duration-200 rounded ${isCollapsed ? 'justify-center px-0' : 'px-4 justify-between hover:bg-gray-900'}`}
-                title={isCollapsed ? "Admin Tools" : ""}
+                className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'justify-center px-0' : 'px-4 justify-between hover:bg-brand-burgundy-dark'}`}
+                title={isCollapsed ? "Admin" : ""}
               >
                 {isCollapsed ? (
-                  <span className="font-bold text-lg leading-none">A</span>
+                  <span className="font-bold text-lg leading-none text-brand-gold">A</span>
                 ) : (
                   <>
-                    <span className="text-xs font-semibold uppercase tracking-wider">Admin Tools</span>
-                    <svg 
-                      className={`w-4 h-4 transition-transform duration-300 ${isAdminExpanded ? 'transform rotate-180' : ''}`} 
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Admin</span>
+                    <svg className={`w-4 h-4 transition-transform duration-300 ${isAdminExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                   </>
                 )}
               </button>
 
-              <div 
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                  (isAdminExpanded && !isCollapsed) ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'
-                }`}
-              >
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${(isAdminExpanded && !isCollapsed) ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
                 <div className="space-y-2">
                   {adminLinks.map(link => renderLink(link, true))}
                 </div>
@@ -129,10 +160,10 @@ export default function NavigationShell({
           )}
         </nav>
 
-        <div className="p-4 border-t border-gray-800">
+        <div className="p-4 border-t border-brand-burgundy-dark">
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="w-full flex items-center justify-center p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-colors duration-200"
+            className="w-full flex items-center justify-center p-2 text-brand-gold hover:text-white hover:bg-brand-burgundy-dark rounded transition-colors duration-200"
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {isCollapsed ? (
@@ -156,9 +187,9 @@ export default function NavigationShell({
           {!isAuthenticated ? (
             <button 
               onClick={() => setIsModalOpen(true)} 
-              className="px-4 py-2 bg-black text-white rounded font-medium hover:bg-gray-800 transition"
+              className="px-6 py-2 bg-brand-burgundy text-brand-gold rounded font-bold hover:bg-brand-burgundy-dark transition"
             >
-              Admin Login
+              Login
             </button>
           ) : (
             <form action={logoutAction}>
@@ -179,12 +210,12 @@ export default function NavigationShell({
 
       {isModalOpen && !isAuthenticated && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900">Sign In</h2>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-brand-burgundy text-brand-gold">
+              <h2 className="text-xl font-bold">Sign In</h2>
               <button 
                 onClick={() => { setIsModalOpen(false); setError(''); }}
-                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                className="text-brand-gold hover:text-white text-2xl leading-none transition-colors"
               >
                 &times;
               </button>
@@ -192,34 +223,19 @@ export default function NavigationShell({
             
             <form onSubmit={handleLogin} className="p-6 space-y-4">
               {error && (
-                <div className="p-3 bg-red-100 text-red-700 rounded text-sm text-center">
+                <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded text-sm text-center">
                   {error}
                 </div>
               )}
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                <input 
-                  type="text" 
-                  name="username" 
-                  required 
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
-                />
+                <label className="block text-sm font-bold text-brand-burgundy mb-1">Username</label>
+                <input type="text" name="username" required className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy"/>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input 
-                  type="password" 
-                  name="password" 
-                  required 
-                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
-                />
+                <label className="block text-sm font-bold text-brand-burgundy mb-1">Password</label>
+                <input type="password" name="password" required className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy"/>
               </div>
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full py-2 px-4 bg-black text-white rounded hover:bg-gray-800 transition font-medium mt-2 disabled:opacity-50"
-              >
+              <button type="submit" disabled={loading} className="w-full py-3 px-4 bg-brand-burgundy text-brand-gold rounded hover:bg-brand-burgundy-dark transition font-bold mt-2 disabled:opacity-50">
                 {loading ? 'Verifying...' : 'Sign In'}
               </button>
             </form>
