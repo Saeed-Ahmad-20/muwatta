@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { loginAction, logoutAction } from '@/app/actions'
@@ -16,12 +16,21 @@ export default function NavigationShell({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   
+  // Desktop collapse state
   const [isCollapsed, setIsCollapsed] = useState(false)
+  // Mobile drawer state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
   
   const pathname = usePathname()
   const router = useRouter()
+
+  // Automatically close the mobile menu whenever the route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [pathname])
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -62,17 +71,22 @@ export default function NavigationShell({
       <Link 
         key={link.name} 
         href={link.href}
+        onClick={() => setIsMobileMenuOpen(false)} // Explicitly close menu on tap
         title={isCollapsed ? link.name : ''} 
         className={`flex items-center py-3 rounded transition-colors duration-200 
           ${isActive ? 'bg-brand-burgundy-dark text-brand-gold' : 'text-gray-300 hover:bg-brand-burgundy-dark hover:text-brand-gold'} 
-          ${isCollapsed ? 'justify-center px-0' : (isNested ? 'pl-8 pr-4' : 'px-4')}
+          ${isCollapsed ? 'md:justify-center px-4 md:px-0' : (isNested ? 'pl-8 pr-4' : 'px-4')}
         `}
       >
-        {isCollapsed ? (
-          <span className="font-bold text-lg leading-none">{link.name.charAt(0)}</span>
-        ) : (
-          <span className="whitespace-nowrap text-sm font-medium">{link.name}</span>
-        )}
+        {/* Desktop Collapsed View (Initials) */}
+        <span className={`hidden md:block font-bold text-lg leading-none ${!isCollapsed ? 'md:hidden' : ''}`}>
+          {link.name.charAt(0)}
+        </span>
+        
+        {/* Full Text View (Mobile OR Desktop Expanded) */}
+        <span className={`whitespace-nowrap text-sm font-medium ${isCollapsed ? 'md:hidden' : ''}`}>
+          {link.name}
+        </span>
       </Link>
     )
   }
@@ -80,11 +94,26 @@ export default function NavigationShell({
   return (
     <div className="flex min-h-screen bg-gray-50">
       
-      <aside className={`bg-brand-burgundy text-white flex flex-col fixed h-full z-20 transition-all duration-300 ease-in-out ${isCollapsed ? 'w-16' : 'w-64'}`}>
-        
-        <div className={`p-6 flex items-center h-20 border-b border-brand-burgundy-dark ${isCollapsed ? 'justify-center px-0' : ''}`}>
-          <h2 className="text-xl font-bold tracking-wider overflow-hidden whitespace-nowrap text-brand-gold">
-            {isCollapsed ? 'M' : 'Muwatta'}
+      {/* Mobile Background Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden transition-opacity"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar (Responsive) */}
+      <aside className={`bg-brand-burgundy text-white flex flex-col fixed h-full z-40 transition-all duration-300 ease-in-out 
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+        md:translate-x-0 ${isCollapsed ? 'md:w-16' : 'md:w-64'} 
+        w-64`}
+      >
+        <div className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark ${isCollapsed ? 'md:justify-center px-4 md:px-0' : ''}`}>
+          <h2 className={`text-xl font-bold tracking-wider overflow-hidden whitespace-nowrap text-brand-gold ${isCollapsed ? 'md:hidden' : ''}`}>
+            Muwatta
+          </h2>
+          <h2 className={`hidden font-bold tracking-wider text-brand-gold text-xl ${isCollapsed ? 'md:block' : ''}`}>
+            M
           </h2>
         </div>
         
@@ -97,27 +126,25 @@ export default function NavigationShell({
           <div className="mt-6 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
-                if (isCollapsed) {
+                if (isCollapsed && window.innerWidth >= 768) {
                   setIsCollapsed(false)
                   setIsAttendeeExpanded(true)
                 } else {
                   setIsAttendeeExpanded(!isAttendeeExpanded)
                 }
               }}
-              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'justify-center px-0' : 'px-4 justify-between hover:bg-brand-burgundy-dark'}`}
-              title={isCollapsed ? "Attendee Tools" : ""}
+              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-4 md:px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
             >
-              {isCollapsed ? (
-                <span className="font-bold text-lg leading-none text-brand-gold">U</span>
-              ) : (
-                <>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee Tools</span>
-                  <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </>
-              )}
+              <span className={`hidden md:block font-bold text-lg leading-none text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                U
+              </span>
+              <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
+                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee Tools</span>
+                <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </div>
             </button>
 
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${(isAttendeeExpanded && !isCollapsed) ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${(isAttendeeExpanded && (!isCollapsed || window.innerWidth < 768)) ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
               <div className="space-y-2">
                 {attendeeLinks.map(link => renderLink(link, true))}
               </div>
@@ -128,27 +155,25 @@ export default function NavigationShell({
             <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
                 onClick={() => {
-                  if (isCollapsed) {
+                  if (isCollapsed && window.innerWidth >= 768) {
                     setIsCollapsed(false)
                     setIsAdminExpanded(true)
                   } else {
                     setIsAdminExpanded(!isAdminExpanded)
                   }
                 }}
-                className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'justify-center px-0' : 'px-4 justify-between hover:bg-brand-burgundy-dark'}`}
-                title={isCollapsed ? "Admin" : ""}
+                className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-4 md:px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
               >
-                {isCollapsed ? (
-                  <span className="font-bold text-lg leading-none text-brand-gold">A</span>
-                ) : (
-                  <>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Admin</span>
-                    <svg className={`w-4 h-4 transition-transform duration-300 ${isAdminExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                  </>
-                )}
+                <span className={`hidden md:block font-bold text-lg leading-none text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                  A
+                </span>
+                <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Admin</span>
+                  <svg className={`w-4 h-4 transition-transform duration-300 ${isAdminExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </div>
               </button>
 
-              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${(isAdminExpanded && !isCollapsed) ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${(isAdminExpanded && (!isCollapsed || window.innerWidth < 768)) ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
                 <div className="space-y-2">
                   {adminLinks.map(link => renderLink(link, true))}
                 </div>
@@ -157,7 +182,8 @@ export default function NavigationShell({
           )}
         </nav>
 
-        <div className="p-4 border-t border-brand-burgundy-dark">
+        {/* Desktop-only collapse toggle */}
+        <div className="p-4 border-t border-brand-burgundy-dark hidden md:block">
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="w-full flex items-center justify-center p-2 text-brand-gold hover:text-white hover:bg-brand-burgundy-dark rounded transition-colors duration-200"
@@ -179,12 +205,29 @@ export default function NavigationShell({
         </div>
       </aside>
 
-      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'ml-16' : 'ml-64'}`}>
-        <header className="w-full bg-white shadow-sm h-16 flex items-center justify-end px-8 sticky top-0 z-10">
+      {/* Main Content Wrapper */}
+      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
+        
+        {/* Top Header */}
+        <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between md:justify-end px-4 md:px-8 sticky top-0 z-10">
+          
+          {/* Mobile Hamburger Icon */}
+          <div className="flex items-center md:hidden">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="text-brand-burgundy hover:text-brand-burgundy-dark focus:outline-none p-2 -ml-2"
+            >
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <h1 className="ml-2 font-bold text-brand-burgundy text-lg">Muwatta</h1>
+          </div>
+
           {!isAuthenticated ? (
             <button 
               onClick={() => setIsModalOpen(true)} 
-              className="px-6 py-2 bg-brand-burgundy text-brand-gold rounded font-bold hover:bg-brand-burgundy-dark transition"
+              className="px-6 py-2 bg-brand-burgundy text-brand-gold rounded font-bold hover:bg-brand-burgundy-dark transition text-sm md:text-base"
             >
               Login
             </button>
@@ -192,7 +235,7 @@ export default function NavigationShell({
             <form action={logoutAction}>
               <button 
                 type="submit" 
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium hover:bg-gray-300 transition"
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium hover:bg-gray-300 transition text-sm md:text-base"
               >
                 Log Out
               </button>
@@ -200,11 +243,12 @@ export default function NavigationShell({
           )}
         </header>
 
-        <main className="flex-1">
+        <main className="flex-1 w-full overflow-x-hidden">
           {children}
         </main>
       </div>
 
+      {/* Login Modal */}
       {isModalOpen && !isAuthenticated && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy">
