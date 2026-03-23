@@ -1,95 +1,82 @@
-import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
-
-const getAnswer = (questions: any[], questionNameMatch: string) => {
-  if (!questions) return null;
-  const question = questions.find((q: any) => 
-    q.question && q.question.toLowerCase().includes(questionNameMatch.toLowerCase())
-  );
-  return question ? question.answer : null;
-};
+import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
 
 export async function POST() {
   try {
-    const apiKey = process.env.TICKET_TAILOR_API_KEY;
-    if (!apiKey) throw new Error("Missing Ticket Tailor API Key");
-
-    const eventId = 'ev_7520320';
-    const authHeader = 'Basic ' + Buffer.from(`${apiKey}:`).toString('base64');
-    
-    let allTickets: any[] = [];
-    let hasMore = true;
-    let startingAfter = '';
-
-    while (hasMore) {
-      let url = `https://api.tickettailor.com/v1/issued_tickets?event_id=${eventId}&status=valid&limit=100`;
-      
-      if (startingAfter) {
-        url += `&starting_after=${startingAfter}`;
-      }
-
-      const response = await fetch(url, {
-        headers: { 'Accept': 'application/json', 'Authorization': authHeader }
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(`Ticket Tailor API failed: ${JSON.stringify(err)}`);
-      }
-      
-      const data = await response.json();
-      const ticketsBatch = data.data || data; 
-
-      if (Array.isArray(ticketsBatch) && ticketsBatch.length > 0) {
-        allTickets = allTickets.concat(ticketsBatch);
-        startingAfter = ticketsBatch[ticketsBatch.length - 1].id;
-      }
-      if (!Array.isArray(ticketsBatch) || ticketsBatch.length < 100) hasMore = false;
+    const apiKey = process.env.TICKET_TAILOR_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({ success: false, error: 'Ticket Tailor API key missing.' }, { status: 500 })
     }
 
-    const attendeesToInsert = allTickets.map((ticket: any) => {
-      const qs = ticket.custom_questions || [];
-
-      return {
-        admission_type: ticket.description || '', 
-        description: ticket.description || '',
-        attendee_name: ticket.full_name || '',
-        email: ticket.email || '',
-        mobile_number: getAnswer(qs, 'mobile number') || '',
-        address_line: getAnswer(qs, 'first line of home address') || '',
-        city: getAnswer(qs, 'city') || '',
-        postal_code: getAnswer(qs, 'postal code') || '',
-        country: getAnswer(qs, 'country') || '',
-        emergency_contact_name: getAnswer(qs, 'emergency contact name') || '',
-        emergency_contact_number: getAnswer(qs, 'emergency contact number') || '',
-        medical_conditions: getAnswer(qs, 'medical conditions') || 'None',
-        position: getAnswer(qs, 'imam or teacher') || '',
-        arabic_name: getAnswer(qs, 'name in arabic') || '',
-      };
-    });
-
-    if (attendeesToInsert.length > 0) {
-      // 1. Wipe the table and reset the custom sequences
-      const { error: wipeError } = await supabaseAdmin.rpc('wipe_and_reset_attendees');
-      if (wipeError) {
-        console.error('Failed to wipe database:', wipeError);
-        return NextResponse.json({ error: `Wipe Error: ${wipeError.message}` }, { status: 500 });
+    const ttResponse = await fetch('https://api.tickettailor.com/v1/issued_tickets?status=valid', {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`
       }
+    })
 
-      // 2. Insert the fresh data
-      const { error: insertError } = await supabaseAdmin
-        .from('attendees')
-        .insert(attendeesToInsert);
-
-      if (insertError) {
-        console.error('Supabase Insert Error:', insertError);
-        return NextResponse.json({ error: `Insert Error: ${insertError.message}` }, { status: 500 });
-      }
+    if (!ttResponse.ok) {
+      return NextResponse.json({ success: false, error: `Ticket Tailor API responded with status: ${ttResponse.status}` }, { status: ttResponse.status })
     }
 
-    return NextResponse.json({ success: true, count: attendeesToInsert.length });
+    const ttData = await ttResponse.json()
+    const tickets = ttData.data || []
+
+    const { data: existingAttendees, error: fetchError } = await supabase.from('attendees').select('*')
+    if (fetchError) throw fetchError
+
+    let processedCount = 0
+
+    for (const ticket of tickets) {
+      const getAnswer = (keyword: string) => {
+        const question = ticket.custom_questions?.find((q: any) => 
+          q.question.toLowerCase().includes(keyword.toLowerCase())
+        )
+        return question ? question.answer : ''
+      }
+
+      const email = ticket.email?.toLowerCase() || getAnswer('email')?.toLowerCase() || null
+      const attendeeName = ticket.name || ''
+      const admissionType = ticket.description || ticket.ticket_type || 'General'
+
+      const recordData = {
+        tt_ticket_id: ticket.id, // HIDDEN: Stored so we can PUT updates back to Ticket Tailor later
+        attendee_name: attendeeName,
+        email: email,
+        admission_type: admissionType,
+        description: '',
+        mobile_number: getAnswer('mobile number'),
+        address_line: getAnswer('first line of home'),
+        city: getAnswer('city'),
+        postal_code: getAnswer('postal code'),
+        country: getAnswer('country'),
+        emergency_contact_name: getAnswer('emergency contact name'),
+        emergency_contact_number: getAnswer('emergency contact number'),
+        medical_conditions: getAnswer('medical condition'),
+        position: getAnswer('imam or teacher'),
+        arabic_name: getAnswer('name in arabic'),
+      }
+
+      const existingPerson = existingAttendees?.find(a => 
+        a.attendee_name === attendeeName && a.email === email
+      )
+
+      if (existingPerson) {
+        await supabase.from('attendees').update(recordData).eq('id', existingPerson.id)
+      } else {
+        await supabase.from('attendees').insert([recordData])
+      }
+      
+      processedCount++
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      count: processedCount
+    })
+
   } catch (error: any) {
-    console.error('Sync error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    console.error('Sync Error:', error)
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }
