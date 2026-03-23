@@ -15,7 +15,9 @@ export function middleware(request: NextRequest) {
 
   // 2. Protect Routes (ONLY lock down the Admin section!)
   const isAdminRoute = path.startsWith('/admin')
-  const isAuthenticated = request.cookies.has('session') 
+  
+  // CHANGED: Now exactly matches the cookie name from your actions.ts file!
+  const isAuthenticated = request.cookies.has('admin_session') 
 
   if (isAdminRoute && !isAuthenticated) {
     // Redirect unauthorized users to the home page where the login modal is located
@@ -25,7 +27,6 @@ export function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-// Vercel relies on this config block to know exactly which routes to run through the Edge network
 export const config = {
   matcher: [
     '/admin/:path*', 
