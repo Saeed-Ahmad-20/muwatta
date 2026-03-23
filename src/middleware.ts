@@ -13,11 +13,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/attendee/register', request.url))
   }
 
-  // 2. Protect Routes
-  const isProtected = path.startsWith('/admin') || path.startsWith('/attendee')
+  // 2. Protect Routes (ONLY lock down the Admin section!)
+  const isAdminRoute = path.startsWith('/admin')
   const isAuthenticated = request.cookies.has('session') 
 
-  if (isProtected && !isAuthenticated) {
+  if (isAdminRoute && !isAuthenticated) {
     // Redirect unauthorized users to the home page where the login modal is located
     return NextResponse.redirect(new URL('/', request.url))
   }
