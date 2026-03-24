@@ -16,9 +16,7 @@ export default function NavigationShell({
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   
-  // Desktop collapse state
   const [isCollapsed, setIsCollapsed] = useState(false)
-  // Mobile drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
@@ -27,7 +25,6 @@ export default function NavigationShell({
   const pathname = usePathname()
   const router = useRouter()
 
-  // Automatically close the mobile menu whenever the route changes
   useEffect(() => {
     setIsMobileMenuOpen(false)
   }, [pathname])
@@ -61,7 +58,8 @@ export default function NavigationShell({
 
   const adminLinks = [
     { name: 'Attendees DB', href: '/admin/attendees' },
-    { name: 'Pending Approvals', href: '/admin/approvals' },
+    { name: 'Detail Approvals', href: '/admin/approvals' },
+    { name: 'Attendance Approvals', href: '/admin/attendance-approvals' }, // NEW LINK!
   ]
 
   const renderLink = (link: { name: string, href: string }, isNested: boolean = false) => {
@@ -71,19 +69,16 @@ export default function NavigationShell({
       <Link 
         key={link.name} 
         href={link.href}
-        onClick={() => setIsMobileMenuOpen(false)} // Explicitly close menu on tap
+        onClick={() => setIsMobileMenuOpen(false)}
         title={isCollapsed ? link.name : ''} 
         className={`flex items-center py-3 rounded transition-colors duration-200 
           ${isActive ? 'bg-brand-burgundy-dark text-brand-gold' : 'text-gray-300 hover:bg-brand-burgundy-dark hover:text-brand-gold'} 
           ${isCollapsed ? 'md:justify-center px-4 md:px-0' : (isNested ? 'pl-8 pr-4' : 'px-4')}
         `}
       >
-        {/* Desktop Collapsed View (Initials) */}
         <span className={`hidden md:block font-bold text-lg leading-none ${!isCollapsed ? 'md:hidden' : ''}`}>
           {link.name.charAt(0)}
         </span>
-        
-        {/* Full Text View (Mobile OR Desktop Expanded) */}
         <span className={`whitespace-nowrap text-sm font-medium ${isCollapsed ? 'md:hidden' : ''}`}>
           {link.name}
         </span>
@@ -94,7 +89,6 @@ export default function NavigationShell({
   return (
     <div className="flex min-h-screen bg-gray-50">
       
-      {/* Mobile Background Overlay */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden transition-opacity"
@@ -102,7 +96,6 @@ export default function NavigationShell({
         />
       )}
 
-      {/* Sidebar (Responsive) */}
       <aside className={`bg-brand-burgundy text-white flex flex-col fixed h-full z-40 transition-all duration-300 ease-in-out 
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
         md:translate-x-0 ${isCollapsed ? 'md:w-16' : 'md:w-64'} 
@@ -139,12 +132,12 @@ export default function NavigationShell({
                 U
               </span>
               <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
-                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee Tools</span>
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
 
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${(isAttendeeExpanded && (!isCollapsed || window.innerWidth < 768)) ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAttendeeExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
                 {attendeeLinks.map(link => renderLink(link, true))}
               </div>
@@ -155,7 +148,7 @@ export default function NavigationShell({
             <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
                 onClick={() => {
-                  if (isCollapsed && window.innerWidth >= 768) {
+                  if (isCollapsed) {
                     setIsCollapsed(false)
                     setIsAdminExpanded(true)
                   } else {
@@ -173,7 +166,7 @@ export default function NavigationShell({
                 </div>
               </button>
 
-              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${(isAdminExpanded && (!isCollapsed || window.innerWidth < 768)) ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'}`}>
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAdminExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
                 <div className="space-y-2">
                   {adminLinks.map(link => renderLink(link, true))}
                 </div>
@@ -182,7 +175,6 @@ export default function NavigationShell({
           )}
         </nav>
 
-        {/* Desktop-only collapse toggle */}
         <div className="p-4 border-t border-brand-burgundy-dark hidden md:block">
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -205,13 +197,8 @@ export default function NavigationShell({
         </div>
       </aside>
 
-      {/* Main Content Wrapper */}
       <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
-        
-        {/* Top Header */}
         <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between md:justify-end px-4 md:px-8 sticky top-0 z-10">
-          
-          {/* Mobile Hamburger Icon */}
           <div className="flex items-center md:hidden">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
@@ -248,7 +235,6 @@ export default function NavigationShell({
         </main>
       </div>
 
-      {/* Login Modal */}
       {isModalOpen && !isAuthenticated && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy">
