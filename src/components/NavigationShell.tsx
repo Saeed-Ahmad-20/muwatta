@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { loginAction, logoutAction } from '@/app/actions'
 
 export default function NavigationShell({ 
@@ -23,7 +23,6 @@ export default function NavigationShell({
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
   
   const pathname = usePathname()
-  const router = useRouter()
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
@@ -39,8 +38,9 @@ export default function NavigationShell({
     
     if (res.success) {
       setIsModalOpen(false)
-      router.push('/admin/attendees')
-      router.refresh()
+      // FIX: Use a hard browser redirect instead of the internal Next.js router.
+      // This guarantees the app doesn't freeze, and forces the middleware to instantly see your new login cookie!
+      window.location.href = '/admin/attendees'
     } else {
       setError(res.error || 'Login failed')
       setLoading(false)
@@ -59,7 +59,7 @@ export default function NavigationShell({
   const adminLinks = [
     { name: 'Attendees DB', href: '/admin/attendees' },
     { name: 'Detail Approvals', href: '/admin/approvals' },
-    { name: 'Attendance Approvals', href: '/admin/attendance-approvals' }, // NEW LINK!
+    { name: 'Attendance Approvals', href: '/admin/attendance-approvals' },
   ]
 
   const renderLink = (link: { name: string, href: string }, isNested: boolean = false) => {
@@ -69,6 +69,7 @@ export default function NavigationShell({
       <Link 
         key={link.name} 
         href={link.href}
+        prefetch={false} // FIX: Stops Next.js from prefetching too early and crashing the router!
         onClick={() => setIsMobileMenuOpen(false)}
         title={isCollapsed ? link.name : ''} 
         className={`flex items-center py-3 rounded transition-colors duration-200 
