@@ -47,18 +47,23 @@ export default function NavigationShell({
     }
   }
 
+  // ==========================================
+  // UPDATED: ADDED ICONS TO LINKS
+  // ==========================================
   const publicLinks = [
-    { name: 'Home', href: '/' },
+    { 
+      name: 'Home', 
+      href: '/',
+      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+    },
   ]
 
-  // ==========================================
-  // UPDATED: THE EVENT LINKS
-  // ==========================================
   const eventLinks = [
     { name: 'Event Details & Schedule', href: '/info/event-details' },
     { name: 'The Muwatta', href: '/info/muwatta' },
     { name: 'Imam Malik', href: '/info/imam-malik' },
     { name: 'Shaykh Al-Yaqoubi', href: '/info/shaykh-yaqoubi' },
+    { name: 'Ashton Central Mosque', href: '/info/ashton-central-mosque' },
     { name: 'Guidance Hub', href: '/info/guidance-hub' },
   ]
 
@@ -72,9 +77,11 @@ export default function NavigationShell({
     { name: 'Attendees DB', href: '/admin/attendees' },
     { name: 'Detail Approvals', href: '/admin/approvals' },
     { name: 'Attendance Approvals', href: '/admin/attendance-approvals' },
+    { name: 'Ijazah List', href: '/admin/ijazah-list' },
   ]
 
-  const renderLink = (link: { name: string, href: string }, isNested: boolean = false) => {
+  // Added icon support to the renderer
+  const renderLink = (link: { name: string, href: string, icon?: React.ReactNode }, isNested: boolean = false) => {
     const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href))
     
     return (
@@ -89,9 +96,9 @@ export default function NavigationShell({
           ${isCollapsed ? 'md:justify-center px-4 md:px-0' : (isNested ? 'pl-8 pr-4' : 'px-4')}
         `}
       >
-        <span className={`hidden md:block font-bold text-lg leading-none ${!isCollapsed ? 'md:hidden' : ''}`}>
-          {link.name.charAt(0)}
-        </span>
+        <div className={`hidden md:flex justify-center items-center ${!isCollapsed ? 'md:hidden' : ''}`}>
+          {link.icon ? link.icon : <span className="font-bold text-lg leading-none">{link.name.charAt(0)}</span>}
+        </div>
         <span className={`whitespace-nowrap text-sm font-medium ${isCollapsed ? 'md:hidden' : ''}`}>
           {link.name}
         </span>
@@ -114,13 +121,19 @@ export default function NavigationShell({
         md:translate-x-0 ${isCollapsed ? 'md:w-16' : 'md:w-64'} 
         w-64`}
       >
-        <div className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark ${isCollapsed ? 'md:justify-center px-4 md:px-0' : ''}`}>
+        {/* ========================================== */}
+        {/* BRAND LOGO HEADER                          */}
+        {/* ========================================== */}
+        <div className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark ${isCollapsed ? 'md:justify-center px-0' : ''}`}>
           <h2 className={`text-xl font-bold tracking-wider overflow-hidden whitespace-nowrap text-brand-gold ${isCollapsed ? 'md:hidden' : ''}`}>
             Muwatta
           </h2>
-          <h2 className={`hidden font-bold tracking-wider text-brand-gold text-xl ${isCollapsed ? 'md:block' : ''}`}>
-            M
-          </h2>
+          {/* Replaced 'M' with an open book icon */}
+          <div className={`hidden text-brand-gold ${isCollapsed ? 'md:block' : ''}`}>
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
         </div>
         
         <nav className="flex-1 px-3 mt-4 overflow-y-auto overflow-x-hidden">
@@ -142,11 +155,12 @@ export default function NavigationShell({
                   setIsEventExpanded(!isEventExpanded)
                 }
               }}
-              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-4 md:px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
+              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
             >
-              <span className={`hidden md:block font-bold text-lg leading-none text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
-                E
-              </span>
+              {/* Replaced 'E' with Calendar Icon */}
+              <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
               <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
                 <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">The Event</span>
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isEventExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -173,11 +187,12 @@ export default function NavigationShell({
                   setIsAttendeeExpanded(!isAttendeeExpanded)
                 }
               }}
-              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-4 md:px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
+              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
             >
-              <span className={`hidden md:block font-bold text-lg leading-none text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
-                U
-              </span>
+              {/* Replaced 'U' with User Icon */}
+              <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              </div>
               <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
                 <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee</span>
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -205,11 +220,12 @@ export default function NavigationShell({
                     setIsAdminExpanded(!isAdminExpanded)
                   }
                 }}
-                className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-4 md:px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
+                className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
               >
-                <span className={`hidden md:block font-bold text-lg leading-none text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
-                  A
-                </span>
+                {/* Replaced 'A' with Security Shield Icon */}
+                <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                </div>
                 <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
                   <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Admin</span>
                   <svg className={`w-4 h-4 transition-transform duration-300 ${isAdminExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
