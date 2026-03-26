@@ -55,6 +55,7 @@ export default function NavigationShell({
   // UPDATED: THE EVENT LINKS
   // ==========================================
   const eventLinks = [
+    { name: 'Event Details & Schedule', href: '/info/event-details' },
     { name: 'The Muwatta', href: '/info/muwatta' },
     { name: 'Imam Malik', href: '/info/imam-malik' },
     { name: 'Shaykh Al-Yaqoubi', href: '/info/shaykh-yaqoubi' },
