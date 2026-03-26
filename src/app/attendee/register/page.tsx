@@ -465,6 +465,7 @@ export default function RegisterAttendance() {
         throw new Error("Please enter both your ID Number and a Postcode.")
       }
 
+      // 1. Verify Attendee Exists
       const { data: attendee, error: dbError } = await supabase
         .from('attendees')
         .select('*')
@@ -475,6 +476,7 @@ export default function RegisterAttendance() {
         throw new Error("We couldn't find an attendee with that ID Number.")
       }
 
+      // 2. Security Check: Verify Postcode
       const dbPostcode = (attendee.postal_code || '').replace(/\s+/g, '').toLowerCase()
       const inputPostcode = postcode.replace(/\s+/g, '').toLowerCase()
 
@@ -482,16 +484,58 @@ export default function RegisterAttendance() {
         throw new Error("The postcode provided does not match our records for this ID Number.")
       }
 
-      const recordsToInsert = []
-      if (selectedSessions.am) {
-        recordsToInsert.push({ attendee_id: attendee.id, attendee_name: attendee.attendee_name, event_date: selectedDate, session_type: 'am' })
+      // ==========================================
+      // NEW: EVENT ARRIVAL CHECK
+      // ==========================================
+      if (!attendee.checked_in_at) {
+        throw new Error("Access Denied: You must complete your Initial Arrival check-in at the 'Check In' tab before you can log daily sessions.")
       }
-      if (selectedSessions.pm) {
-        recordsToInsert.push({ attendee_id: attendee.id, attendee_name: attendee.attendee_name, event_date: selectedDate, session_type: 'pm' })
-      }
+      // ==========================================
 
       const isRetroactive = selectedDate < todayString
       const targetTable = isRetroactive ? 'attendance_requests' : 'attendance_records'
+
+      // ==========================================
+      // SMART DUPLICATE CHECKER 
+      // ==========================================
+      const { data: existingRecords, error: existingError } = await supabase
+        .from(targetTable)
+        .select('session_type')
+        .eq('attendee_id', attendee.id)
+        .eq('event_date', selectedDate)
+
+      if (existingError) throw new Error("Could not verify your previous attendance logs.")
+
+      const alreadyLoggedAm = existingRecords?.some(r => r.session_type === 'am')
+      const alreadyLoggedPm = existingRecords?.some(r => r.session_type === 'pm')
+
+      const attemptAm = selectedSessions.am
+      const attemptPm = selectedSessions.pm
+
+      const dupAm = attemptAm && alreadyLoggedAm
+      const dupPm = attemptPm && alreadyLoggedPm
+
+      const newAm = attemptAm && !alreadyLoggedAm
+      const newPm = attemptPm && !alreadyLoggedPm
+
+      if (attemptAm && attemptPm && dupAm && dupPm) {
+        throw new Error("You have already logged your attendance for BOTH the AM and PM sessions on this date.")
+      } else if (attemptAm && !attemptPm && dupAm) {
+        throw new Error("You have already logged your attendance for the AM session on this date.")
+      } else if (!attemptAm && attemptPm && dupPm) {
+        throw new Error("You have already logged your attendance for the PM session on this date.")
+      }
+
+      // ==========================================
+      // SAVE ONLY THE NEW RECORDS
+      // ==========================================
+      const recordsToInsert = []
+      if (newAm) {
+        recordsToInsert.push({ attendee_id: attendee.id, attendee_name: attendee.attendee_name, event_date: selectedDate, session_type: 'am' })
+      }
+      if (newPm) {
+        recordsToInsert.push({ attendee_id: attendee.id, attendee_name: attendee.attendee_name, event_date: selectedDate, session_type: 'pm' })
+      }
 
       const { error: insertError } = await supabase
         .from(targetTable)
@@ -506,7 +550,8 @@ export default function RegisterAttendance() {
       setSuccessData({
         ...attendee,
         registered_date: selectedDateLabel,
-        registered_sessions: selectedSessions,
+        newly_registered: { am: newAm, pm: newPm },
+        already_registered: { am: dupAm, pm: dupPm },
         isRetroactive
       })
 
@@ -552,9 +597,16 @@ export default function RegisterAttendance() {
               <h2 className="text-xl font-bold text-brand-burgundy mb-2">
                 {successData.isRetroactive ? 'Attendance Submitted' : 'Attendance Logged'}
               </h2>
-              <p className="text-gray-600 mb-2">
+              
+              <p className="text-gray-600 mb-1">
                 Jazakallah Khair, <strong className="text-brand-burgundy">{successData.attendee_name}</strong>!
               </p>
+
+              {successData.arabic_name && (
+                <p className="text-2xl font-bold text-brand-burgundy mb-2" dir="rtl">
+                  {successData.arabic_name}
+                </p>
+              )}
 
               {successData.isRetroactive && (
                 <div className="text-xs bg-yellow-50 text-yellow-800 p-3 rounded-lg mt-3 mb-2 border border-yellow-200">
@@ -566,12 +618,22 @@ export default function RegisterAttendance() {
                 <p className="text-sm font-bold text-brand-burgundy">
                   {successData.registered_date}
                 </p>
-                <p className="text-sm text-gray-600 mt-1">
-                  Sessions: 
-                  {successData.registered_sessions.am && <span className="font-bold text-brand-gold ml-1">AM</span>}
-                  {successData.registered_sessions.am && successData.registered_sessions.pm && " & "}
-                  {successData.registered_sessions.pm && <span className="font-bold text-brand-gold ml-1">PM</span>}
+                
+                <p className="text-sm text-gray-700 mt-2 font-medium">
+                  Successfully Logged Now: 
+                  {successData.newly_registered.am && <span className="font-bold text-brand-gold ml-1">AM</span>}
+                  {successData.newly_registered.am && successData.newly_registered.pm && " & "}
+                  {successData.newly_registered.pm && <span className="font-bold text-brand-gold ml-1">PM</span>}
                 </p>
+
+                {(successData.already_registered.am || successData.already_registered.pm) && (
+                  <div className="mt-3 p-2 bg-blue-50 border border-blue-100 rounded text-xs text-blue-800 font-medium">
+                    Note: We saw you had already logged the 
+                    {successData.already_registered.am && " AM"}
+                    {successData.already_registered.am && successData.already_registered.pm && " and"}
+                    {successData.already_registered.pm && " PM"} session(s) previously.
+                  </div>
+                )}
               </div>
               
               <button 
@@ -590,7 +652,7 @@ export default function RegisterAttendance() {
             <form onSubmit={handleRegister} className="space-y-6">
               
               {error && (
-                <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded text-sm text-center">
+                <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded text-sm text-center font-medium">
                   {error}
                 </div>
               )}
