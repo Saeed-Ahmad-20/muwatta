@@ -8,9 +8,9 @@ export default function Home() {
       <div className="bg-brand-burgundy text-brand-gold py-20 px-4 relative overflow-hidden flex-1 flex flex-col justify-center items-center">
         
         {/* Subtle decorative background glow */}
-        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-brand-gold via-brand-burgundy to-brand-burgundy"></div>
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-brand-gold via-brand-burgundy to-brand-burgundy z-0"></div>
 
-        <div className="relative z-10 text-center max-w-5xl mx-auto space-y-6">
+        <div className="relative z-0 text-center max-w-5xl mx-auto space-y-6">
           <h1 className="text-7xl md:text-9xl font-black mb-4 drop-shadow-md" dir="rtl">
             الموطأ
           </h1>
@@ -46,7 +46,7 @@ export default function Home() {
       </div>
 
       {/* QUICK INFO BAR */}
-      <div className="bg-white border-b border-gray-200 shadow-sm relative z-20">
+      <div className="bg-white border-b border-gray-200 shadow-sm relative z-0">
         <div className="max-w-6xl mx-auto px-6 py-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-gray-100">
             
