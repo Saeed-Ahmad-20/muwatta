@@ -100,6 +100,14 @@ export default function MyDetails() {
         throw new Error("The postcode provided does not match our records for this name.")
       }
 
+      // ==========================================
+      // NEW: ARRIVAL CHECK
+      // ==========================================
+      if (!matchedAttendee.checked_in_at) {
+        throw new Error("Access Denied: You must complete your Initial Arrival Registration via the 'Check In' tab before you can view your details.")
+      }
+      // ==========================================
+
       const { data: records, error: recordsError } = await supabase
         .from('attendance_records')
         .select('*')

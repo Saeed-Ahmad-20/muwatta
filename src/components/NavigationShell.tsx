@@ -19,6 +19,8 @@ export default function NavigationShell({
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   
+  // Tab Expand/Collapse States
+  const [isEventExpanded, setIsEventExpanded] = useState(true)
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
   
@@ -38,8 +40,6 @@ export default function NavigationShell({
     
     if (res.success) {
       setIsModalOpen(false)
-      // FIX: Use a hard browser redirect instead of the internal Next.js router.
-      // This guarantees the app doesn't freeze, and forces the middleware to instantly see your new login cookie!
       window.location.href = '/admin/attendees'
     } else {
       setError(res.error || 'Login failed')
@@ -51,7 +51,18 @@ export default function NavigationShell({
     { name: 'Home', href: '/' },
   ]
 
+  // ==========================================
+  // UPDATED: THE EVENT LINKS
+  // ==========================================
+  const eventLinks = [
+    { name: 'The Muwatta', href: '/info/muwatta' },
+    { name: 'Imam Malik', href: '/info/imam-malik' },
+    { name: 'Shaykh Al-Yaqoubi', href: '/info/shaykh-yaqoubi' },
+    { name: 'Guidance Hub', href: '/info/guidance-hub' },
+  ]
+
   const attendeeLinks = [
+    { name: 'Event Arrival', href: '/attendee/arrival' }, 
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
   ]
@@ -69,7 +80,7 @@ export default function NavigationShell({
       <Link 
         key={link.name} 
         href={link.href}
-        prefetch={false} // FIX: Stops Next.js from prefetching too early and crashing the router!
+        prefetch={false} 
         onClick={() => setIsMobileMenuOpen(false)}
         title={isCollapsed ? link.name : ''} 
         className={`flex items-center py-3 rounded transition-colors duration-200 
@@ -117,7 +128,41 @@ export default function NavigationShell({
             {publicLinks.map(link => renderLink(link, false))}
           </div>
 
+          {/* ========================================== */}
+          {/* THE EVENT TAB DROPDOWN                     */}
+          {/* ========================================== */}
           <div className="mt-6 pt-4 border-t border-brand-burgundy-dark">
+            <button
+              onClick={() => {
+                if (isCollapsed && window.innerWidth >= 768) {
+                  setIsCollapsed(false)
+                  setIsEventExpanded(true)
+                } else {
+                  setIsEventExpanded(!isEventExpanded)
+                }
+              }}
+              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-4 md:px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
+            >
+              <span className={`hidden md:block font-bold text-lg leading-none text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                E
+              </span>
+              <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
+                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">The Event</span>
+                <svg className={`w-4 h-4 transition-transform duration-300 ${isEventExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </button>
+
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isEventExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
+              <div className="space-y-2">
+                {eventLinks.map(link => renderLink(link, true))}
+              </div>
+            </div>
+          </div>
+
+          {/* ========================================== */}
+          {/* ATTENDEE TAB DROPDOWN                      */}
+          {/* ========================================== */}
+          <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
                 if (isCollapsed && window.innerWidth >= 768) {
@@ -133,7 +178,7 @@ export default function NavigationShell({
                 U
               </span>
               <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
-                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee Tools</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee</span>
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
@@ -145,6 +190,9 @@ export default function NavigationShell({
             </div>
           </div>
 
+          {/* ========================================== */}
+          {/* ADMIN TAB DROPDOWN                         */}
+          {/* ========================================== */}
           {isAuthenticated && (
             <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
