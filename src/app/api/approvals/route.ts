@@ -1,6 +1,25 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabaseAdmin' // <-- Now using the VIP admin key!
 
+// NEW: Securely fetch the pending requests for the dashboard
+export async function GET() {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('detail_approval_requests')
+      .select(`*, attendees (*)`)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+
+    if (error) throw new Error(error.message)
+
+    return NextResponse.json({ success: true, data })
+  } catch (error: any) {
+    console.error('Fetch Approvals Error:', error)
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+}
+
+// EXISTING: Process the approvals (Updated to use supabaseAdmin)
 export async function POST(request: Request) {
   try {
     const { attendeeId, requestIds, approvedFields, action } = await request.json()
@@ -10,12 +29,11 @@ export async function POST(request: Request) {
     }
 
     if (action === 'process') {
-      
       const hasApprovedFields = Object.keys(approvedFields).length > 0;
 
       // 1. If fields were approved, update the main Supabase attendees table
       if (hasApprovedFields) {
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from('attendees')
           .update(approvedFields)
           .eq('id', attendeeId)
@@ -23,9 +41,7 @@ export async function POST(request: Request) {
         if (updateError) throw new Error("Failed to update database")
 
         // 2. Ticket Tailor Sync Logic
-        // We need to fetch the original attendee data to prevent blanking out the name/email 
-        // if they were not part of the approved fields.
-        const { data: attendee } = await supabase
+        const { data: attendee } = await supabaseAdmin
           .from('attendees')
           .select('tt_ticket_id, attendee_name, email')
           .eq('id', attendeeId)
@@ -55,11 +71,10 @@ export async function POST(request: Request) {
         }
       }
 
-      // 3. Update the status of all grouped requests in the staging table
-      // If we approved anything, mark it as 'approved', otherwise 'rejected'
+      // 3. Update the status of all grouped requests
       const statusToApply = hasApprovedFields ? 'approved' : 'rejected';
       
-      const { error: statusError } = await supabase
+      const { error: statusError } = await supabaseAdmin
         .from('detail_approval_requests')
         .update({ 
           status: statusToApply, 

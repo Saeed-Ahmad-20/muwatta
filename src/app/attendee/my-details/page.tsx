@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 const EVENT_DATES = [
   { id: '2026-04-04', label: 'Day 1 (Apr 4)' },
@@ -80,39 +79,23 @@ export default function MyDetails() {
         throw new Error("Please enter both your name and Postcode.")
       }
 
-      const { data, error: dbError } = await supabase
-        .from('attendees')
-        .select('*')
-        .ilike('attendee_name', attendeeName.trim())
-
-      if (dbError || !data || data.length === 0) {
-        throw new Error("We couldn't find an attendee registered with that exact name. Please check your spelling.")
-      }
-
-      const inputPostcode = postcode.replace(/\s+/g, '').toLowerCase()
-      
-      const matchedAttendee = data.find((a: any) => {
-        const dbPostcode = (a.postal_code || '').replace(/\s+/g, '').toLowerCase()
-        return dbPostcode === inputPostcode
+      // ==========================================
+      // UPDATED: SECURE API FETCH (Bypasses RLS)
+      // ==========================================
+      const response = await fetch('/api/attendee/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attendeeName, postcode })
       })
 
-      if (!matchedAttendee) {
-        throw new Error("The postcode provided does not match our records for this name.")
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "An error occurred while verifying your details.")
       }
 
-      if (!matchedAttendee.checked_in_at) {
-        throw new Error("Access Denied: You must complete your Initial Arrival Registration via the 'Check In' tab before you can view your details.")
-      }
-
-      const { data: records, error: recordsError } = await supabase
-        .from('attendance_records')
-        .select('*')
-        .eq('attendee_id', matchedAttendee.id)
-
-      if (recordsError) console.error("Could not fetch attendance records", recordsError)
-      else setAttendanceRecords(records || [])
-
-      setSuccessData(matchedAttendee)
+      setSuccessData(result.attendee)
+      setAttendanceRecords(result.records)
 
     } catch (err: any) {
       setError(err.message || "An error occurred while verifying your details.")
@@ -136,7 +119,7 @@ export default function MyDetails() {
           oldVal: oldVal, 
           newVal: newVal,
           isRtl: f.key === 'arabic_name',
-          key: f.key // Keep track of the DB key
+          key: f.key 
         })
       }
     })
@@ -154,23 +137,30 @@ export default function MyDetails() {
     setEditSaving(true)
     
     try {
-      // Build the JSON object of ONLY the changed fields
       const changesObj: Record<string, string> = {}
       pendingChanges.forEach(change => {
         changesObj[change.key] = change.newVal
       })
 
-      // Insert into our new staging table
-      const { error: insertError } = await supabase
-        .from('detail_approval_requests')
-        .insert({
+      // ==========================================
+      // UPDATED: SECURE API POST (Bypasses RLS)
+      // ==========================================
+      const response = await fetch('/api/attendee/request-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           attendee_id: successData.id,
           attendee_name: successData.attendee_name,
           tt_ticket_id: successData.tt_ticket_id,
           requested_changes: changesObj
         })
+      })
 
-      if (insertError) throw insertError
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to submit request.")
+      }
 
       setShowConfirmModal(false)
       setIsEditing(false)

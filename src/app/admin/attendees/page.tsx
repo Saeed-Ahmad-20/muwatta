@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 type Attendee = {
   id: number
@@ -19,7 +18,7 @@ type Attendee = {
   medical_conditions: string
   position: string
   arabic_name: string
-  tt_ticket_id: string | null // <-- Updated to tt_ticket_id
+  tt_ticket_id: string | null
 }
 
 type AttendanceRecord = {
@@ -52,18 +51,23 @@ export default function AttendanceTracker() {
   const fetchData = async () => {
     setLoading(true)
     
-    const [attendeesResponse, recordsResponse] = await Promise.all([
-      supabase.from('attendees').select('*').order('id', { ascending: true }),
-      supabase.from('attendance_records').select('*')
-    ])
+    try {
+      // Fetch securely through our new API route
+      const response = await fetch('/api/admin/attendees')
+      const result = await response.json()
 
-    if (attendeesResponse.error) console.error('Error fetching attendees:', attendeesResponse.error)
-    else setAttendees(attendeesResponse.data || [])
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to fetch data')
+      }
 
-    if (recordsResponse.error) console.error('Error fetching records:', recordsResponse.error)
-    else setAttendanceRecords(recordsResponse.data || [])
-    
-    setLoading(false)
+      setAttendees(result.attendees)
+      setAttendanceRecords(result.records)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      alert('Failed to load attendees database.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const syncTicketTailor = async () => {
@@ -104,7 +108,6 @@ export default function AttendanceTracker() {
     </div>
   )
 
-  // Real-time filtering logic updated to use tt_ticket_id
   const filteredAttendees = attendees.filter((attendee) => {
     const searchLower = searchTerm.toLowerCase()
     return (
@@ -138,7 +141,6 @@ export default function AttendanceTracker() {
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="mb-6 relative w-full max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,7 +222,6 @@ export default function AttendanceTracker() {
                   </tr>
                 ))}
                 
-                {/* Empty State Handlers */}
                 {attendees.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
@@ -267,7 +268,6 @@ export default function AttendanceTracker() {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="md:col-span-2">
-                  {/* Updated to use tt_ticket_id */}
                   <DetailItem label="Ticket ID" value={selectedAttendee.tt_ticket_id} />
                 </div>
                 <div className="md:col-span-2">

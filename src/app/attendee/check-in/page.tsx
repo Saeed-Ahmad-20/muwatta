@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
 
 type CheckedInAttendee = {
   id: number
@@ -32,38 +31,22 @@ export default function ArrivalCheckIn() {
     setAlreadyCheckedIn(false) // Reset on new submission
 
     try {
-      // 1. Find the attendee by Ticket Code
-      const { data: attendee, error: fetchError } = await supabase
-        .from('attendees')
-        .select('id, attendee_name, arabic_name, tt_ticket_id, checked_in_at')
-        .eq('tt_ticket_id', ticketCode.trim())
-        .single()
+      // SECURE API FETCH: Bypass RLS via backend route
+      const response = await fetch('/api/attendee/check-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketCode })
+      })
 
-      if (fetchError || !attendee) {
-        throw new Error("Ticket Code not found. Please check your ticket and try again.")
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "An error occurred during check-in.")
       }
 
-      // 2. Check if they already did this
-      if (attendee.checked_in_at) {
-        setAlreadyCheckedIn(true) // Flag as already registered
-        setSuccessAttendee(attendee) // Show them their ID again if they forgot!
-        setTicketCode('')
-        return
-      }
-
-      // 3. Log their official arrival time
-      const now = new Date().toISOString()
-      const { error: updateError } = await supabase
-        .from('attendees')
-        .update({ checked_in_at: now })
-        .eq('id', attendee.id)
-
-      if (updateError) throw new Error("Connection error. Please try again.")
-
-      const updatedAttendee = { ...attendee, checked_in_at: now }
-
-      // 4. Update UI
-      setSuccessAttendee(updatedAttendee)
+      // Update UI with the secure API response
+      setAlreadyCheckedIn(result.alreadyCheckedIn)
+      setSuccessAttendee(result.attendee)
       setTicketCode('')
 
     } catch (err: any) {

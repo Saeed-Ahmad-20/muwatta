@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 const EDITABLE_FIELDS = [
   { key: 'attendee_name', label: 'Full Name' },
@@ -59,50 +58,52 @@ export default function ApprovalsPage() {
   const fetchRequests = async () => {
     setLoading(true)
     
-    // Fetch pending requests ordered by creation date ascending (oldest first)
-    const { data, error } = await supabase
-      .from('detail_approval_requests')
-      .select(`*, attendees (*)`)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true })
+    try {
+      // Securely fetch from our own API instead of Supabase directly
+      const response = await fetch('/api/approvals')
+      const result = await response.json()
 
-    if (error) {
-      console.error(error)
-      setLoading(false)
-      return
-    }
-
-    // Group by attendee_id and merge changes (latest overrides oldest)
-    const groupsMap = new Map()
-    data?.forEach(req => {
-      if (!groupsMap.has(req.attendee_id)) {
-        groupsMap.set(req.attendee_id, {
-          attendee_id: req.attendee_id,
-          attendee: req.attendees,
-          requestIds: [],
-          mergedChanges: {}
-        })
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to fetch requests")
       }
-      
-      const group = groupsMap.get(req.attendee_id)
-      group.requestIds.push(req.id)
-      group.mergedChanges = { ...group.mergedChanges, ...req.requested_changes }
-    })
 
-    const groups = Array.from(groupsMap.values())
-    
-    // Initialize checkboxes (all true by default)
-    const initialSelections: Record<number, Record<string, boolean>> = {}
-    groups.forEach(group => {
-      initialSelections[group.attendee_id] = {}
-      Object.keys(group.mergedChanges).forEach(key => {
-        initialSelections[group.attendee_id][key] = true
+      const data = result.data
+
+      // Group by attendee_id and merge changes (latest overrides oldest)
+      const groupsMap = new Map()
+      data?.forEach((req: any) => {
+        if (!groupsMap.has(req.attendee_id)) {
+          groupsMap.set(req.attendee_id, {
+            attendee_id: req.attendee_id,
+            attendee: req.attendees,
+            requestIds: [],
+            mergedChanges: {}
+          })
+        }
+        
+        const group = groupsMap.get(req.attendee_id)
+        group.requestIds.push(req.id)
+        group.mergedChanges = { ...group.mergedChanges, ...req.requested_changes }
       })
-    })
 
-    setSelections(initialSelections)
-    setGroupedRequests(groups)
-    setLoading(false)
+      const groups = Array.from(groupsMap.values())
+      
+      // Initialize checkboxes (all true by default)
+      const initialSelections: Record<number, Record<string, boolean>> = {}
+      groups.forEach((group: any) => {
+        initialSelections[group.attendee_id] = {}
+        Object.keys(group.mergedChanges).forEach(key => {
+          initialSelections[group.attendee_id][key] = true
+        })
+      })
+
+      setSelections(initialSelections)
+      setGroupedRequests(groups)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const toggleSelection = (attendeeId: number, key: string) => {
@@ -187,7 +188,7 @@ export default function ApprovalsPage() {
                 <div className="bg-brand-burgundy px-6 py-4 flex flex-col md:flex-row md:justify-between md:items-center text-brand-gold gap-4">
                   <div>
                     <h2 className="text-xl font-bold">Update Request for {group.attendee?.attendee_name}</h2>
-                    <p className="text-sm font-bold opacity-90">ID: #{group.attendee?.id} • {group.requestIds.length} bundled request(s)</p>
+                    <p className="text-sm font-bold opacity-90">ID: #{group.attendee?.id}</p>
                   </div>
                   <div className="flex space-x-3 w-full md:w-auto">
                     <button 

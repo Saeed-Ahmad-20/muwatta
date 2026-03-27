@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabaseAdmin' // <-- Swapped to the Admin client!
 
 export async function POST() {
   try {
@@ -51,14 +51,15 @@ export async function POST() {
 
 
     // ==========================================
-    // 2. FETCH ALL SUPABASE ATTENDEES 
+    // 2. FETCH ALL SUPABASE ATTENDEES (Using Admin Client)
     // ==========================================
     let allDbAttendees: any[] = []
     let hasMoreDb = true
     let rangeStart = 0
 
     while (hasMoreDb) {
-      const { data, error } = await supabase
+      // Bypasses RLS to get the true list of tickets
+      const { data, error } = await supabaseAdmin
         .from('attendees')
         .select('id, tt_ticket_id')
         .order('id', { ascending: true })
@@ -121,7 +122,7 @@ export async function POST() {
     }
 
     // ==========================================
-    // 4. PARALLEL INDIVIDUAL INSERT (NEW ONLY)
+    // 4. PARALLEL INDIVIDUAL INSERT (Using Admin Client)
     // ==========================================
     let successCount = 0
     let failCount = 0
@@ -131,7 +132,8 @@ export async function POST() {
     for (let i = 0; i < recordsToInsert.length; i += CHUNK_SIZE) {
       const chunk = recordsToInsert.slice(i, i + CHUNK_SIZE)
       await Promise.all(chunk.map(async (record) => {
-        const { error } = await supabase.from('attendees').insert(record)
+        // Bypasses RLS to insert new records
+        const { error } = await supabaseAdmin.from('attendees').insert(record)
         if (error) {
           failCount++; if (!firstError) firstError = error;
         } else { successCount++; }

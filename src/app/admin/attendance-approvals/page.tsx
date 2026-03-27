@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 export default function AttendanceApprovalsPage() {
   const [requests, setRequests] = useState<any[]>([])
@@ -14,16 +13,23 @@ export default function AttendanceApprovalsPage() {
 
   const fetchRequests = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('attendance_requests')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-
-    if (error) console.error(error)
-    else setRequests(data || [])
     
-    setLoading(false)
+    try {
+      // Secure API fetch instead of direct Supabase query
+      const response = await fetch('/api/attendance-approvals')
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to fetch requests")
+      }
+
+      setRequests(result.data || [])
+    } catch (error: any) {
+      console.error(error)
+      alert("Error loading queue: " + error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleAction = async (requestId: number, action: 'approve' | 'reject') => {

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { getServerTime } from '@/app/actions'
 
 const EVENT_DATES = [
@@ -38,9 +37,9 @@ export default function RegisterAttendance() {
         const clientTime = Date.now()
         const serverIso = await getServerTime()
         const serverTime = new Date(serverIso).getTime()
-        setTimeOffset(serverTime - clientTime) // Calculate the exact difference to prevent local time manipulation
+        setTimeOffset(serverTime - clientTime)
       } catch (e) {
-        setTimeOffset(0) // Fallback if server action fails
+        setTimeOffset(0) 
       }
     }
     syncClock()
@@ -51,7 +50,7 @@ export default function RegisterAttendance() {
     if (!isMounted || timeOffset === null) return 
 
     const checkTimeAndDates = () => {
-      const actualNow = new Date(Date.now() + timeOffset) // Secure time
+      const actualNow = new Date(Date.now() + timeOffset) 
       
       const formatter = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Europe/London',
@@ -69,13 +68,11 @@ export default function RegisterAttendance() {
       const currentTodayStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`
       setTodayString(currentTodayStr)
 
-      // Cutoff Check: Close entirely after April 10, 2026
       if (currentTodayStr > '2026-04-10') {
         setAppState('concluded')
         return
       }
 
-      // Early Check: Before the event starts
       if (currentTodayStr < '2026-04-04') {
         setAppState('too_early')
         return
@@ -83,45 +80,37 @@ export default function RegisterAttendance() {
 
       setAppState('open')
 
-      // Only show dates up to and including "Today"
       const unlockedDates = EVENT_DATES.filter(d => d.id <= currentTodayStr)
       setAvailableDates(unlockedDates)
 
-      // Auto-select the most recent date if none is selected
       const activeDateId = selectedDate || (unlockedDates.length > 0 ? unlockedDates[unlockedDates.length - 1].id : '')
       if (!selectedDate && activeDateId) {
         setSelectedDate(activeDateId)
       }
 
-      // Time Window Logic
       if (activeDateId === currentTodayStr) {
-        // It is today! Check the clock.
         const currentHour = parseInt(getPart('hour'))
         const currentMinute = parseInt(getPart('minute'))
         const decimalTime = currentHour + (currentMinute / 60)
 
-        // AM Opens at 06:00
         const isAmTime = decimalTime >= 6.0 && decimalTime < 24.0
-        // PM Opens at 13:30 (1:30 PM)
         const isPmTime = decimalTime >= 13.5 && decimalTime < 24.0
 
         setIsAmEnabled(isAmTime)
         setIsPmEnabled(isPmTime)
 
-        // Deselect if time window closes/changes
         setSelectedSessions(prev => ({
           am: prev.am && isAmTime,
           pm: prev.pm && isPmTime
         }))
       } else {
-        // It is a past date. Fully unlock the buttons for retroactive requests.
         setIsAmEnabled(true)
         setIsPmEnabled(true)
       }
     }
 
     checkTimeAndDates()
-    const interval = setInterval(checkTimeAndDates, 30000) // Re-check every 30 seconds
+    const interval = setInterval(checkTimeAndDates, 30000) 
     return () => clearInterval(interval)
   }, [isMounted, timeOffset, selectedDate])
 
@@ -140,93 +129,37 @@ export default function RegisterAttendance() {
         throw new Error("Please enter both your ID Number and a Postcode.")
       }
 
-      // 1. Verify Attendee Exists
-      const { data: attendee, error: dbError } = await supabase
-        .from('attendees')
-        .select('*')
-        .eq('id', parseInt(idNumber))
-        .single()
-
-      if (dbError || !attendee) {
-        throw new Error("We couldn't find an attendee with that ID Number.")
-      }
-
-      // 2. Security Check: Verify Postcode
-      const dbPostcode = (attendee.postal_code || '').replace(/\s+/g, '').toLowerCase()
-      const inputPostcode = postcode.replace(/\s+/g, '').toLowerCase()
-
-      if (dbPostcode !== inputPostcode) {
-        throw new Error("The postcode provided does not match our records for this ID Number.")
-      }
-
-      // ==========================================
-      // SECURITY GATE: EVENT ARRIVAL CHECK
-      // ==========================================
-      if (!attendee.checked_in_at) {
-        throw new Error("Access Denied: You must complete your Initial Arrival check-in at the 'Event Arrival' tab before you can log daily sessions.")
-      }
-
       const isRetroactive = selectedDate < todayString
-      const targetTable = isRetroactive ? 'attendance_requests' : 'attendance_records'
 
       // ==========================================
-      // SMART DUPLICATE CHECKER 
+      // SECURE API CALL (Bypasses RLS Safely)
       // ==========================================
-      const { data: existingRecords, error: existingError } = await supabase
-        .from(targetTable)
-        .select('session_type')
-        .eq('attendee_id', attendee.id)
-        .eq('event_date', selectedDate)
+      const response = await fetch('/api/attendee/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idNumber,
+          postcode,
+          selectedDate,
+          selectedSessions,
+          isRetroactive
+        })
+      })
 
-      if (existingError) throw new Error("Could not verify your previous attendance logs.")
+      const result = await response.json()
 
-      const alreadyLoggedAm = existingRecords?.some(r => r.session_type === 'am')
-      const alreadyLoggedPm = existingRecords?.some(r => r.session_type === 'pm')
-
-      const attemptAm = selectedSessions.am
-      const attemptPm = selectedSessions.pm
-
-      const dupAm = attemptAm && alreadyLoggedAm
-      const dupPm = attemptPm && alreadyLoggedPm
-
-      const newAm = attemptAm && !alreadyLoggedAm
-      const newPm = attemptPm && !alreadyLoggedPm
-
-      // Reject if trying to log something they already logged
-      if (attemptAm && attemptPm && dupAm && dupPm) {
-        throw new Error("You have already logged your attendance for BOTH the AM and PM sessions on this date.")
-      } else if (attemptAm && !attemptPm && dupAm) {
-        throw new Error("You have already logged your attendance for the AM session on this date.")
-      } else if (!attemptAm && attemptPm && dupPm) {
-        throw new Error("You have already logged your attendance for the PM session on this date.")
-      }
-
-      // ==========================================
-      // SAVE ONLY THE NEW RECORDS
-      // ==========================================
-      const recordsToInsert = []
-      if (newAm) {
-        recordsToInsert.push({ attendee_id: attendee.id, attendee_name: attendee.attendee_name, event_date: selectedDate, session_type: 'am' })
-      }
-      if (newPm) {
-        recordsToInsert.push({ attendee_id: attendee.id, attendee_name: attendee.attendee_name, event_date: selectedDate, session_type: 'pm' })
-      }
-
-      const { error: insertError } = await supabase
-        .from(targetTable)
-        .upsert(recordsToInsert, { onConflict: 'attendee_id, event_date, session_type', ignoreDuplicates: true })
-
-      if (insertError) {
-        throw new Error("Failed to save attendance to the database. Please try again.")
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "An error occurred while verifying your details.")
       }
 
       const selectedDateLabel = EVENT_DATES.find(d => d.id === selectedDate)?.label
 
+      // Update UI matching the exact data shape the API returned
       setSuccessData({
-        ...attendee,
+        ...result.attendee,
         registered_date: selectedDateLabel,
-        newly_registered: { am: newAm, pm: newPm },
-        already_registered: { am: dupAm, pm: dupPm },
+        newly_registered: { am: result.newAm, pm: result.newPm },
+        already_registered: { am: result.dupAm, pm: result.dupPm },
         isRetroactive
       })
 
@@ -392,7 +325,7 @@ export default function RegisterAttendance() {
                         ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
                         : selectedSessions.am 
                           ? 'border-brand-burgundy bg-brand-burgundy text-brand-gold shadow-md' 
-                          : 'border-gray-200 bg-white text-gray-500 hover:border-brand-burgundy hover:text-brand-burgundy'
+                          : 'border-gray-200 bg-white text-gray-50 hover:border-brand-burgundy hover:text-brand-burgundy'
                     }`}
                   >
                     AM Session

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 
 type IjazahAttendee = {
   id: number
@@ -22,15 +21,16 @@ export default function IjazahList() {
   const fetchIjazahList = async () => {
     try {
       setLoading(true)
-      // Only fetch attendees who have a checked_in_at timestamp
-      const { data, error: fetchError } = await supabase
-        .from('attendees')
-        .select('id, attendee_name, arabic_name, checked_in_at')
-        .not('checked_in_at', 'is', null)
-        .order('id', { ascending: true })
+      
+      // Securely fetch from our new API endpoint
+      const response = await fetch('/api/admin/ijazah')
+      const result = await response.json()
 
-      if (fetchError) throw fetchError
-      setAttendees(data || [])
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to fetch Ijazah list.')
+      }
+
+      setAttendees(result.data)
     } catch (err: any) {
       setError(err.message)
     } finally {
