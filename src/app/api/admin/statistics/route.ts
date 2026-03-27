@@ -28,16 +28,28 @@ export async function GET() {
     const uniqueCities = new Set<string>()
     const overallSplits = { 'Male': 0, 'Female': 0, 'Mother & Baby': 0, 'Other': 0 }
     const attendeeMap = new Map()
+    
+    // NEW: Tally for the country breakdown
+    const countryBreakdown: Record<string, number> = {}
 
     attendees?.forEach(a => {
-      if (a.country && a.country.trim() !== '') uniqueCountries.add(a.country.trim().toLowerCase())
-      if (a.city && a.city.trim() !== '') uniqueCities.add(a.city.trim().toLowerCase())
+      if (a.country && a.country.trim() !== '') {
+        const cleanCountry = a.country.trim()
+        uniqueCountries.add(cleanCountry.toLowerCase())
+        
+        // Add to breakdown tally
+        countryBreakdown[cleanCountry] = (countryBreakdown[cleanCountry] || 0) + 1
+      }
+      
+      if (a.city && a.city.trim() !== '') {
+        uniqueCities.add(a.city.trim().toLowerCase())
+      }
 
       let type = a.admission_type ? a.admission_type.toLowerCase() : ''
       let bucket = 'Other'
       if (type.includes('mother') || type.includes('baby')) bucket = 'Mother & Baby'
-      else if (type.includes('female')) bucket = 'Female'
-      else if (type.includes('male')) bucket = 'Male'
+      else if (type.includes('female') || type.includes('sister')) bucket = 'Female'
+      else if (type.includes('male') || type.includes('brother')) bucket = 'Male'
 
       overallSplits[bucket as keyof typeof overallSplits]++
       attendeeMap.set(a.id, bucket)
@@ -90,6 +102,7 @@ export async function GET() {
         countriesCount: uniqueCountries.size || 1,
         citiesCount: uniqueCities.size,
         overallSplits,
+        countryBreakdown, // <-- Send to frontend
         attendanceBreakdown: finalStats
       }
     })

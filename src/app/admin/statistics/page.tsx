@@ -8,6 +8,7 @@ type StatsData = {
   countriesCount: number
   citiesCount: number
   overallSplits: Record<string, number>
+  countryBreakdown: Record<string, number> // <-- Add to type
   attendanceBreakdown: Record<string, { 
     am: number, 
     pm: number, 
@@ -28,6 +29,9 @@ export default function InsightsDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
+  
+  // NEW: State for the modal
+  const [showCountriesModal, setShowCountriesModal] = useState(false)
 
   useEffect(() => {
     fetchStats()
@@ -76,7 +80,7 @@ export default function InsightsDashboard() {
   const arrivalPercentage = stats.totalAttendees ? Math.round((stats.arrivedAttendees / stats.totalAttendees) * 100) : 0
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 relative">
       
       <div className="text-center md:text-left flex justify-between items-end">
         <div>
@@ -102,9 +106,14 @@ export default function InsightsDashboard() {
           <span className="text-sm font-bold uppercase tracking-widest text-gray-500">On-Site Arrivals</span>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border-2 border-brand-burgundy/10 shadow-sm flex flex-col justify-center items-center text-center">
-          <span className="text-5xl font-black text-brand-burgundy mb-2">{stats.countriesCount}</span>
-          <span className="text-sm font-bold uppercase tracking-widest text-gray-500">Countries</span>
+        {/* CLICKABLE COUNTRIES CARD */}
+        <div 
+          onClick={() => setShowCountriesModal(true)}
+          className="bg-white p-6 rounded-2xl border-2 border-brand-burgundy/10 shadow-sm flex flex-col justify-center items-center text-center cursor-pointer hover:border-brand-burgundy/30 hover:bg-brand-burgundy/5 transition-all group"
+        >
+          <span className="text-5xl font-black text-brand-burgundy mb-2 group-hover:scale-105 transition-transform">{stats.countriesCount}</span>
+          <span className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-1">Countries</span>
+          <span className="text-[10px] text-brand-burgundy font-bold bg-brand-burgundy/10 px-2 py-0.5 rounded-full opacity-70 group-hover:opacity-100 transition-opacity">Tap to view</span>
         </div>
 
         <div className="bg-white p-6 rounded-2xl border-2 border-brand-burgundy/10 shadow-sm flex flex-col justify-center items-center text-center">
@@ -235,6 +244,53 @@ export default function InsightsDashboard() {
           </div>
         </div>
       </div>
+
+      {/* COUNTRIES BREAKDOWN MODAL */}
+      {showCountriesModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+          onClick={() => setShowCountriesModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-brand-burgundy-dark flex justify-between items-center sticky top-0 bg-brand-burgundy text-brand-gold z-10 shadow-sm">
+              <h2 className="text-xl font-bold flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Country Breakdown
+              </h2>
+              <button 
+                onClick={() => setShowCountriesModal(false)}
+                className="text-brand-gold hover:text-white text-3xl leading-none bg-brand-burgundy-dark hover:bg-brand-burgundy h-8 w-8 rounded-full flex items-center justify-center transition-colors"
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto flex-1 p-2">
+              <table className="w-full text-left border-collapse">
+                <tbody>
+                  {Object.entries(stats.countryBreakdown || {})
+                    .sort((a, b) => b[1] - a[1]) // Sorts highest count to lowest
+                    .map(([country, count], idx) => (
+                      <tr key={country} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
+                        <td className="py-3 px-4 text-sm font-bold text-gray-700 flex items-center">
+                          <span className="w-6 text-gray-400 text-xs font-medium">{idx + 1}.</span>
+                          {country}
+                        </td>
+                        <td className="py-3 px-4 text-sm font-black text-brand-burgundy text-right">
+                          {count.toLocaleString()}
+                        </td>
+                      </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+          </div>
+        </div>
+      )}
 
     </div>
   )
