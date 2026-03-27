@@ -16,7 +16,16 @@ export default function AttendanceApprovalsPage() {
     
     try {
       // Secure API fetch instead of direct Supabase query
-      const response = await fetch('/api/attendance-approvals')
+      const response = await fetch('/api/approvals/attendance-approvals')
+
+      // SAFETY CHECK: Did the server return HTML instead of JSON?
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        const textStr = await response.text()
+        console.error("Server returned HTML:", textStr) 
+        throw new Error("API Route not found or returned an HTML page. Check the console for details.")
+      }
+        
       const result = await response.json()
 
       if (!response.ok || !result.success) {
@@ -37,7 +46,7 @@ export default function AttendanceApprovalsPage() {
 
     setProcessingId(requestId)
     try {
-      const res = await fetch('/api/attendance-approvals', {
+      const res = await fetch('/api/approvals/attendance-approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestId, action })

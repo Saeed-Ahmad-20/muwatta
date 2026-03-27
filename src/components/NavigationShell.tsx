@@ -73,6 +73,7 @@ export default function NavigationShell({
     { name: 'Attendees DB', href: '/admin/attendees' },
     { name: 'Detail Approvals', href: '/admin/approvals' },
     { name: 'Attendance Approvals', href: '/admin/attendance-approvals' },
+    { name: 'Manual Attendance', href: '/admin/direct-attendance' },
     { name: 'Ijazah List', href: '/admin/ijazah-list' },
   ]
 
