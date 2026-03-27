@@ -26,9 +26,41 @@ export default function NavigationShell({
   
   const pathname = usePathname()
 
+  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false)
   }, [pathname])
+
+  // ==========================================
+  // GLOBAL MOBILE SCROLL LOCK (IRONCLAD)
+  // Locks both body and html to prevent iOS Safari scroll bleed
+  // ==========================================
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      // Lock both HTML and Body
+      document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
+      
+      // Prevent iOS bounce effect
+      document.body.style.position = 'fixed'
+      document.body.style.width = '100%'
+    } else {
+      // Unlock both
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+      
+      document.body.style.position = ''
+      document.body.style.width = ''
+    }
+
+    // Cleanup function in case component unmounts
+    return () => {
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+    }
+  }, [isMobileMenuOpen])
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -112,7 +144,8 @@ export default function NavigationShell({
         />
       )}
 
-      <aside className={`bg-brand-burgundy text-white flex flex-col fixed h-full z-40 transition-all duration-300 ease-in-out 
+      {/* UPDATED: Changed h-full to h-[100dvh] to respect mobile browser chrome */}
+      <aside className={`bg-brand-burgundy text-white flex flex-col fixed h-[100dvh] z-40 transition-all duration-300 ease-in-out 
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
         md:translate-x-0 ${isCollapsed ? 'md:w-16' : 'md:w-64'} 
         w-64`}
@@ -134,7 +167,8 @@ export default function NavigationShell({
           </div>
         </div>
         
-        <nav className="flex-1 px-3 mt-4 overflow-y-auto overflow-x-hidden">
+        {/* UPDATED: Added overscroll-contain to prevent scroll chaining */}
+        <nav className="flex-1 px-3 mt-4 overflow-y-auto overflow-x-hidden overscroll-contain">
           
           <div className="space-y-2">
             {publicLinks.map(link => renderLink(link, false))}
