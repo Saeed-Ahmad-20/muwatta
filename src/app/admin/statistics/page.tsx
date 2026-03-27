@@ -154,7 +154,7 @@ function WorldMap({
   }
 
   const getColor = (count: number) => {
-    if (count === 0) return "#F3F4F6" 
+    if (count === 0) return "#E2E8F0" // <-- Darkened from #F3F4F6 to stand out from the ocean
     if (count <= 2) return "#eab3b3"  
     if (count <= 10) return "#c76464" 
     if (count <= 50) return "#a62d2d" 
@@ -285,7 +285,8 @@ function WorldMap({
       </div>
       
       <div className="flex justify-center items-center gap-4 mt-6 text-xs font-bold text-gray-500 flex-wrap">
-        <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#F3F4F6] mr-2 border border-gray-200"></span>0</div>
+        {/* Updated the background color for the '0' indicator to match the map */}
+        <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#E2E8F0] mr-2 border border-gray-300"></span>0</div>
         <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#eab3b3] mr-2"></span>1 - 2</div>
         <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#c76464] mr-2"></span>3 - 10</div>
         <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#a62d2d] mr-2"></span>11 - 50</div>
