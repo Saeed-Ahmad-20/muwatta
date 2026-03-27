@@ -1,3 +1,7 @@
+'use client'
+
+import Link from 'next/link'
+
 export default function EventDetailsInfo() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50 py-12 px-4 md:px-8 flex justify-center">
@@ -21,7 +25,7 @@ export default function EventDetailsInfo() {
               A <em>Majlis of Sama'</em> (Gathering of Audition) is a traditional Islamic educational practice that dates back to the time of the Companions. It involves the continuous, rapid, and accurate recitation of a classical text in the presence of a master scholar.
             </p>
             <p>
-              During this event, highly proficient reciters will read the entire Arabic text of <strong>Al-Muwatta'</strong> aloud. Shaykh Muhammad Al-Yaqoubi will preside over the gathering, listening intently, correcting pronunciation errors, explaining complex or obscure terminology, and providing brief commentary on the legal rulings (Fiqh) and spiritual lessons within the hadith.
+              During this event, Shaykh Issam Sboui from Tunisia will read the entire Arabic text of <strong>Al-Muwatta'</strong> aloud. Shaykh Muhammad Al-Yaqoubi will preside over the gathering, listening intently, correcting pronunciation errors, explaining complex or obscure terminology, and providing brief commentary on the legal rulings (Fiqh) and spiritual lessons within the hadith.
             </p>
           </section>
 
@@ -187,7 +191,14 @@ export default function EventDetailsInfo() {
 
             <div className="mt-10 bg-red-50 text-red-800 p-5 rounded-xl border border-red-200 text-sm font-medium shadow-sm">
               <span className="text-lg block mb-1">⚠️ Important Attendance Note</span>
-              To qualify for the full Ijazah, you must log your attendance via the <strong>Register Attendance</strong> tab.
+              To qualify for the full Ijazah, you must log your attendance via the{' '}
+              <Link 
+                href="/attendee/register" 
+                className="font-bold underline decoration-red-300 hover:decoration-red-800 transition-colors"
+              >
+                Register Attendance
+              </Link>{' '}
+              tab.
             </div>
           </section>
 

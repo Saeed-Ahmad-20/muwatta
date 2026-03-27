@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { getServerTime } from '@/app/actions' // <-- Imported your secure time action
 
 type CheckedInAttendee = {
   id: number
@@ -15,11 +16,47 @@ export default function ArrivalCheckIn() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [successAttendee, setSuccessAttendee] = useState<CheckedInAttendee | null>(null)
-  
-  // NEW: Track if they were already checked in
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false)
 
+  // Secure Time States
+  const [isMounted, setIsMounted] = useState(false)
+  const [isLocked, setIsLocked] = useState(true)
+  const [timeOffset, setTimeOffset] = useState<number | null>(null)
+
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // 1. Synchronize the secure clock on load
+  useEffect(() => {
+    setIsMounted(true)
+    async function syncClock() {
+      try {
+        const clientTime = Date.now()
+        const serverIso = await getServerTime()
+        const serverTime = new Date(serverIso).getTime()
+        setTimeOffset(serverTime - clientTime) // The difference between their phone and reality
+      } catch (e) {
+        setTimeOffset(0) // Fallback
+      }
+    }
+    syncClock()
+  }, [])
+
+  // 2. Continuously monitor the SECURE time
+  useEffect(() => {
+    if (!isMounted || timeOffset === null) return 
+
+    const checkTime = () => {
+      // Apply the offset so changing phone time does nothing
+      const actualNow = new Date(Date.now() + timeOffset) 
+      const unlockTime = new Date('2026-04-03T17:00:00+01:00') // April 3, 5:00 PM BST
+      
+      setIsLocked(actualNow < unlockTime)
+    }
+
+    checkTime()
+    const interval = setInterval(checkTime, 10000) 
+    return () => clearInterval(interval)
+  }, [isMounted, timeOffset])
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,10 +65,9 @@ export default function ArrivalCheckIn() {
     setLoading(true)
     setError('')
     setSuccessAttendee(null)
-    setAlreadyCheckedIn(false) // Reset on new submission
+    setAlreadyCheckedIn(false)
 
     try {
-      // SECURE API FETCH: Bypass RLS via backend route
       const response = await fetch('/api/attendee/check-in', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -44,7 +80,6 @@ export default function ArrivalCheckIn() {
         throw new Error(result.error || "An error occurred during check-in.")
       }
 
-      // Update UI with the secure API response
       setAlreadyCheckedIn(result.alreadyCheckedIn)
       setSuccessAttendee(result.attendee)
       setTicketCode('')
@@ -64,11 +99,38 @@ export default function ArrivalCheckIn() {
     setAlreadyCheckedIn(false)
   }
 
+  // Show a loader while we sync the clock
+  if (!isMounted || timeOffset === null) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-8 h-8 border-4 border-gray-200 border-t-brand-burgundy rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-500 font-medium">Synchronizing secure clock...</p>
+      </div>
+    )
+  }
+
+  // Lock Screen UI
+  if (isLocked) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-20 h-20 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h1 className="text-3xl font-bold text-brand-burgundy mb-2">Check-in Not Open</h1>
+        <p className="text-gray-600 max-w-md mx-auto">
+          Initial event arrival check-in will open on Friday, April 3rd, 2026 at 5:00 PM. Please check back then.
+        </p>
+      </div>
+    )
+  }
+
+  // --- MAIN FORM ---
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4 md:p-8">
       <div className={`w-full ${successAttendee ? 'max-w-2xl' : 'max-w-md'} bg-gray-50 rounded-xl shadow-md border-2 border-brand-burgundy overflow-hidden transition-all duration-300 relative`}>
         
-        {/* Header (Matches My Details) */}
         <div className="bg-brand-burgundy p-6 text-center text-brand-gold">
           <h1 className="text-2xl font-bold">Event Arrival</h1>
           <p className="text-sm text-brand-gold-light mt-2">Log your official arrival and receive your ID Number</p>
@@ -111,7 +173,6 @@ export default function ArrivalCheckIn() {
           ) : (
             <div className="animate-in fade-in zoom-in space-y-6">
               
-              {/* NEW: Already Checked In Banner */}
               {alreadyCheckedIn && (
                 <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg flex items-center justify-center text-center shadow-sm">
                   <svg className="w-6 h-6 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
@@ -119,7 +180,6 @@ export default function ArrivalCheckIn() {
                 </div>
               )}
 
-              {/* Welcome Card */}
               <div className="flex flex-col items-center text-center bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 border ${alreadyCheckedIn ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
@@ -135,31 +195,12 @@ export default function ArrivalCheckIn() {
                 )}
               </div>
 
-              {/* ID Card */}
               <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm text-center">
                 <span className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Your Daily Attendance ID</span>
                 <p className="text-6xl md:text-7xl font-black text-brand-burgundy tracking-tight py-2">{successAttendee.id}</p>
                 <div className="mt-4 bg-red-50 text-red-700 p-3 rounded-lg border border-red-100 font-bold text-sm">
                   ⚠️ Take a screenshot. You will need this ID to log your attendance every morning and afternoon.
                 </div>
-              </div>
-
-              {/* Instructions Card */}
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm text-sm">
-                <h3 className="text-lg font-bold text-brand-burgundy mb-4 flex items-center border-b border-gray-100 pb-2">
-                  <svg className="w-5 h-5 mr-2 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  How to use your Attendee Tabs:
-                </h3>
-                <ul className="space-y-3 text-gray-700 font-medium">
-                  <li className="flex items-start">
-                    <span className="mr-3 text-lg leading-none">📝</span>
-                    <span><strong>Register Attendance:</strong> Use your ID and Postcode on the Attendance tab to log your AM and PM sessions every day.</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="mr-3 text-lg leading-none">👤</span>
-                    <span><strong>My Details:</strong> View your registration information and update any details that may require changing.</span>
-                  </li>
-                </ul>
               </div>
 
               <button

@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(request: Request) {
+
+const unlockTime = new Date('2026-04-03T17:00:00+01:00').getTime()
+if (Date.now() < unlockTime) {
+  return NextResponse.json({ success: false, error: 'Check-in is not open yet.' }, { status: 403 })
+}
+
   try {
     const { ticketCode } = await request.json()
 

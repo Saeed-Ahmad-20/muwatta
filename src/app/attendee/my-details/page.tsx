@@ -79,9 +79,7 @@ export default function MyDetails() {
         throw new Error("Please enter both your name and Postcode.")
       }
 
-      // ==========================================
-      // UPDATED: SECURE API FETCH (Bypasses RLS)
-      // ==========================================
+      // Secure API fetch
       const response = await fetch('/api/attendee/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,9 +140,6 @@ export default function MyDetails() {
         changesObj[change.key] = change.newVal
       })
 
-      // ==========================================
-      // UPDATED: SECURE API POST (Bypasses RLS)
-      // ==========================================
       const response = await fetch('/api/attendee/request-update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,44 +177,50 @@ export default function MyDetails() {
     <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4 md:p-8">
       <div className={`w-full ${successData ? 'max-w-4xl' : 'max-w-md'} bg-gray-50 rounded-xl shadow-md border-2 border-brand-burgundy overflow-hidden transition-all duration-300 relative`}>
         
-        {/* Overlay the confirm modal directly inside the card if triggered */}
+        {/* UPDATED: Centered dynamic modal replacing the full-card overlay */}
         {showConfirmModal && (
-          <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-20 flex flex-col p-8 overflow-y-auto animate-in fade-in">
-            <h2 className="text-2xl font-bold text-brand-burgundy mb-2">Confirm Your Changes</h2>
-            <p className="text-gray-600 mb-6">Please review the details you are requesting to change below. An admin will need to approve these changes before they take effect.</p>
-            
-            <div className="flex-1 space-y-4">
-              {pendingChanges.map((change, idx) => (
-                <div key={idx} className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-                  <span className="block text-xs font-bold text-brand-burgundy uppercase mb-2">{change.label}</span>
-                  <div className="flex flex-col md:flex-row md:items-center text-sm">
-                    <span className="text-red-600 line-through bg-red-50 px-2 py-1 rounded w-full md:w-auto" dir={change.isRtl ? 'rtl' : 'ltr'}>
-                      {change.oldVal || '(Empty)'}
-                    </span>
-                    <svg className="w-5 h-5 text-gray-400 my-2 md:mx-4 md:my-0 transform rotate-90 md:rotate-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                    <span className="text-green-700 font-bold bg-green-50 px-2 py-1 rounded w-full md:w-auto" dir={change.isRtl ? 'rtl' : 'ltr'}>
-                      {change.newVal || '(Empty)'}
-                    </span>
-                  </div>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy">
+              
+              <div className="p-6 md:p-8 overflow-y-auto">
+                <h2 className="text-2xl font-bold text-brand-burgundy mb-2">Confirm Your Changes</h2>
+                <p className="text-gray-600 mb-6">Please review the details you are requesting to change below. An admin will need to approve these changes before they take effect.</p>
+                
+                <div className="space-y-4">
+                  {pendingChanges.map((change, idx) => (
+                    <div key={idx} className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+                      <span className="block text-xs font-bold text-brand-burgundy uppercase mb-2">{change.label}</span>
+                      <div className="flex flex-col md:flex-row md:items-center text-sm">
+                        <span className="text-red-600 line-through bg-red-50 px-3 py-1.5 rounded w-full md:w-auto" dir={change.isRtl ? 'rtl' : 'ltr'}>
+                          {change.oldVal || '(Empty)'}
+                        </span>
+                        <svg className="w-5 h-5 text-gray-400 my-2 md:mx-4 md:my-0 transform rotate-90 md:rotate-0 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                        <span className="text-green-700 font-bold bg-green-50 px-3 py-1.5 rounded w-full md:w-auto" dir={change.isRtl ? 'rtl' : 'ltr'}>
+                          {change.newVal || '(Empty)'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="flex justify-end space-x-4 mt-8 pt-4 border-t border-gray-200">
-              <button 
-                onClick={() => setShowConfirmModal(false)}
-                disabled={editSaving}
-                className="px-6 py-3 bg-gray-200 text-brand-burgundy font-bold rounded hover:bg-gray-300 transition"
-              >
-                Go Back
-              </button>
-              <button 
-                onClick={confirmAndSendRequest}
-                disabled={editSaving}
-                className="px-6 py-3 bg-brand-burgundy text-brand-gold rounded font-bold hover:bg-brand-burgundy-dark transition disabled:opacity-50"
-              >
-                {editSaving ? 'Submitting...' : 'Submit Request'}
-              </button>
+              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 rounded-b-xl">
+                <button 
+                  onClick={() => setShowConfirmModal(false)}
+                  disabled={editSaving}
+                  className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded hover:bg-gray-50 transition shadow-sm"
+                >
+                  Go Back
+                </button>
+                <button 
+                  onClick={confirmAndSendRequest}
+                  disabled={editSaving}
+                  className="px-6 py-2.5 bg-brand-burgundy text-brand-gold rounded font-bold hover:bg-brand-burgundy-dark transition disabled:opacity-50 shadow-sm"
+                >
+                  {editSaving ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
+
             </div>
           </div>
         )}
@@ -412,4 +413,4 @@ export default function MyDetails() {
       </div>
     </div>
   )
-}
+} 
