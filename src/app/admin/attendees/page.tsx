@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 
 type Attendee = {
   id: number
@@ -36,6 +36,18 @@ const EVENT_DATES = [
   '2026-04-07',
 ]
 
+// --- MOVED OUTSIDE COMPONENT TO PREVENT RE-RENDER BUGS ---
+function renderDetailItem(label: string, value: string | null, isRtl = false) {
+  return (
+    <div className="bg-gray-50 p-4 rounded-md border border-gray-100">
+      <span className="block text-xs font-bold text-brand-burgundy uppercase tracking-wider mb-1">{label}</span>
+      <span className={`block text-sm text-gray-900 ${isRtl ? 'font-bold text-lg' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
+        {value || '-'}
+      </span>
+    </div>
+  )
+}
+
 export default function AttendanceTracker() {
   const [attendees, setAttendees] = useState<Attendee[]>([])
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
@@ -44,15 +56,24 @@ export default function AttendanceTracker() {
   const [selectedAttendee, setSelectedAttendee] = useState<Attendee | null>(null) 
   const [searchTerm, setSearchTerm] = useState('')
 
+  // Modal Modes
+  const [modalMode, setModalMode] = useState<'view' | 'editProfile' | 'editAttendance'>('view')
+  
+  // Profile Edit States
+  const [editForm, setEditForm] = useState<Partial<Attendee>>({})
+  const [savingDetails, setSavingDetails] = useState(false)
+
+  // Attendance Edit States
+  const [attendanceDraftState, setAttendanceDraftState] = useState<Record<string, boolean>>({})
+  const [savingAttendance, setSavingAttendance] = useState(false)
+
   useEffect(() => {
     fetchData()
   }, [])
 
   const fetchData = async () => {
     setLoading(true)
-    
     try {
-      // Fetch securely through our new API route
       const response = await fetch('/api/admin/attendees')
       const result = await response.json()
 
@@ -99,23 +120,171 @@ export default function AttendanceTracker() {
     )
   }
 
-  const DetailItem = ({ label, value, isRtl = false }: { label: string, value: string | null, isRtl?: boolean }) => (
-    <div className="bg-gray-50 p-4 rounded-md border border-gray-100">
-      <span className="block text-xs font-bold text-brand-burgundy uppercase tracking-wider mb-1">{label}</span>
-      <span className={`block text-sm text-gray-900 ${isRtl ? 'font-bold text-lg' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
-        {value || '-'}
-      </span>
-    </div>
-  )
+  // --- PROFILE EDITING LOGIC ---
+  const handleSaveChanges = async () => {
+    if (!selectedAttendee) return
+    setSavingDetails(true)
+
+    try {
+      const response = await fetch('/api/admin/update-attendee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedAttendee.id,
+          updates: editForm
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to update attendee.")
+      }
+
+      const updatedAttendee = { ...selectedAttendee, ...editForm } as Attendee
+      setAttendees(prev => prev.map(a => a.id === updatedAttendee.id ? updatedAttendee : a))
+      setSelectedAttendee(updatedAttendee)
+      setModalMode('view')
+      
+    } catch (err: any) {
+      alert("Error saving details: " + err.message)
+    } finally {
+      setSavingDetails(false)
+    }
+  }
+
+  // --- ATTENDANCE EDITING LOGIC ---
+  const currentAttendeeRecords = useMemo(() => {
+    if (!selectedAttendee) return []
+    return attendanceRecords.filter(r => r.attendee_id === selectedAttendee.id)
+  }, [selectedAttendee, attendanceRecords])
+
+  useEffect(() => {
+    if (modalMode === 'editAttendance' && selectedAttendee) {
+      const initialState: Record<string, boolean> = {}
+      EVENT_DATES.forEach(date => {
+        ['am', 'pm'].forEach(session => {
+          const exists = currentAttendeeRecords.some(r => r.event_date === date && r.session_type === session)
+          initialState[`${date}-${session}`] = exists
+        })
+      })
+      setAttendanceDraftState(initialState)
+    }
+  }, [modalMode, selectedAttendee, currentAttendeeRecords])
+
+  const hasAttendanceChanges = useMemo(() => {
+    if (!selectedAttendee) return false
+    for (const date of EVENT_DATES) {
+      for (const session of ['am', 'pm']) {
+        const key = `${date}-${session}`
+        const isDraftChecked = attendanceDraftState[key]
+        const isActuallyChecked = currentAttendeeRecords.some(r => r.event_date === date && r.session_type === session)
+        
+        if (isDraftChecked !== isActuallyChecked) return true
+      }
+    }
+    return false
+  }, [attendanceDraftState, selectedAttendee, currentAttendeeRecords])
+
+  const toggleCheckbox = (dateId: string, session: 'am' | 'pm') => {
+    const key = `${dateId}-${session}`
+    setAttendanceDraftState(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const handleSaveAttendance = async () => {
+    if (!selectedAttendee) return
+    setSavingAttendance(true)
+
+    const additions: any[] = []
+    const removals: number[] = []
+
+    EVENT_DATES.forEach(date => {
+      ['am', 'pm'].forEach(session => {
+        const key = `${date}-${session}`
+        const isChecked = attendanceDraftState[key]
+        const existingRecord = currentAttendeeRecords.find(r => r.event_date === date && r.session_type === session)
+
+        if (isChecked && !existingRecord) {
+          additions.push({ event_date: date, session_type: session })
+        } else if (!isChecked && existingRecord) {
+          removals.push(existingRecord.id)
+        }
+      })
+    })
+
+    try {
+      const promises: Promise<Response>[] = []
+
+      additions.forEach(add => {
+        promises.push(
+          fetch('/api/admin/direct-attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'add',
+              attendee_id: selectedAttendee.id,
+              attendee_name: selectedAttendee.attendee_name,
+              event_date: add.event_date,
+              session_type: add.session_type
+            })
+          })
+        )
+      })
+
+      removals.forEach(recordId => {
+        promises.push(
+          fetch('/api/admin/direct-attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'remove', recordId })
+          })
+        )
+      })
+
+      await Promise.all(promises)
+      await fetchData() // Re-fetch to get accurate IDs for new records
+      alert("Attendance records successfully updated!")
+      setModalMode('view')
+
+    } catch (err: any) {
+      alert("Failed to save changes: " + err.message)
+    } finally {
+      setSavingAttendance(false)
+    }
+  }
+
+  // --- CHANGED TO A STANDARD RENDER FUNCTION TO PREVENT FOCUS LOSS BUG ---
+  const renderInputField = (label: string, fieldKey: keyof Attendee, isRtl = false, disabled = false) => {
+    return (
+      <div className={`p-3 rounded-md border shadow-sm ${disabled ? 'bg-gray-100 border-gray-200 opacity-70' : 'bg-white border-brand-burgundy/30'}`}>
+        <label className="block text-xs font-bold text-brand-burgundy uppercase tracking-wider mb-1">{label}</label>
+        <input 
+          type="text" 
+          value={(editForm[fieldKey] as string) || ''}
+          onChange={(e) => !disabled && setEditForm({ ...editForm, [fieldKey]: e.target.value })}
+          dir={isRtl ? 'rtl' : 'ltr'}
+          disabled={disabled}
+          className={`w-full px-3 py-2 rounded text-sm ${isRtl ? 'font-bold text-lg' : ''} ${disabled ? 'bg-transparent text-gray-500 cursor-not-allowed outline-none' : 'bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-burgundy'}`}
+        />
+      </div>
+    )
+  }
 
   const filteredAttendees = attendees.filter((attendee) => {
     const searchLower = searchTerm.toLowerCase()
     return (
       attendee.attendee_name.toLowerCase().includes(searchLower) ||
       attendee.id.toString().includes(searchLower) ||
-      (attendee.tt_ticket_id && attendee.tt_ticket_id.toLowerCase().includes(searchLower))
+      (attendee.tt_ticket_id && attendee.tt_ticket_id.toLowerCase().includes(searchLower)) ||
+      (attendee.arabic_name && attendee.arabic_name.toLowerCase().includes(searchLower))
     )
   })
+
+  const closeModal = () => {
+    setSelectedAttendee(null)
+    setModalMode('view')
+    setEditForm({})
+  }
 
   return (
     <div className="p-8">
@@ -149,7 +318,7 @@ export default function AttendanceTracker() {
           </div>
           <input
             type="text"
-            placeholder="Search Name, ID, or Ticket ID..."
+            placeholder="Search Name, Arabic Name, ID, or Ticket ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy focus:border-transparent transition-all shadow-sm"
@@ -167,6 +336,7 @@ export default function AttendanceTracker() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-bold text-brand-gold uppercase tracking-wider w-24 border-r border-brand-burgundy-dark">ID</th>
                   <th className="px-6 py-3 text-left text-xs font-bold text-brand-gold uppercase tracking-wider min-w-[200px] border-r border-brand-burgundy-dark">Attendee Name</th>
+                  <th className="px-6 py-3 text-right text-xs font-bold text-brand-gold uppercase tracking-wider min-w-[150px] border-r border-brand-burgundy-dark">Arabic Name</th>
                   
                   {EVENT_DATES.map((date, index) => (
                     <th key={date} className="px-4 py-3 text-center text-xs font-bold text-brand-gold uppercase tracking-wider border-r border-brand-burgundy-dark">
@@ -193,6 +363,14 @@ export default function AttendanceTracker() {
                       title="View Details"
                     >
                       {attendee.attendee_name}
+                    </td>
+                    <td 
+                      className="px-6 py-4 whitespace-nowrap text-sm font-bold text-brand-burgundy cursor-pointer border-r border-gray-200 text-right"
+                      dir="rtl"
+                      onClick={() => setSelectedAttendee(attendee)}
+                      title="View Details"
+                    >
+                      {attendee.arabic_name || '-'}
                     </td>
 
                     {EVENT_DATES.map((date) => (
@@ -224,14 +402,14 @@ export default function AttendanceTracker() {
                 
                 {attendees.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                       No attendees found. Sync your data to begin.
                     </td>
                   </tr>
                 )}
                 {attendees.length > 0 && filteredAttendees.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                       No attendees matched your search for "{searchTerm}".
                     </td>
                   </tr>
@@ -242,62 +420,239 @@ export default function AttendanceTracker() {
         )}
       </div>
 
+      {/* COMPREHENSIVE MODAL */}
       {selectedAttendee && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
-          onClick={() => setSelectedAttendee(null)}
+          onClick={closeModal}
         >
           <div 
-            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-6 py-4 border-b border-brand-burgundy-dark flex justify-between items-center sticky top-0 bg-brand-burgundy text-brand-gold z-10">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-brand-burgundy-dark flex justify-between items-center sticky top-0 bg-brand-burgundy text-brand-gold z-10 shadow-sm">
               <div>
                 <h2 className="text-2xl font-bold">{selectedAttendee.attendee_name}</h2>
                 <p className="text-sm font-bold text-brand-gold-light">ID: #{selectedAttendee.id}</p>
               </div>
-              <button 
-                onClick={() => setSelectedAttendee(null)}
-                className="text-brand-gold hover:text-white text-3xl leading-none bg-brand-burgundy-dark hover:bg-brand-burgundy h-10 w-10 rounded-full flex items-center justify-center transition-colors"
-                title="Close"
-              >
-                &times;
-              </button>
-            </div>
-            
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <DetailItem label="Ticket ID" value={selectedAttendee.tt_ticket_id} />
-                </div>
-                <div className="md:col-span-2">
-                  <DetailItem label="Arabic Name (Ijazah)" value={selectedAttendee.arabic_name} isRtl={true} />
-                </div>
-                <DetailItem label="Email Address" value={selectedAttendee.email} />
-                <DetailItem label="Mobile Number" value={selectedAttendee.mobile_number} />
-                <DetailItem label="Admission Type" value={selectedAttendee.admission_type} />
-                <DetailItem label="Description" value={selectedAttendee.description} />
-                <DetailItem label="Emergency Contact Name" value={selectedAttendee.emergency_contact_name} />
-                <DetailItem label="Emergency Contact Number" value={selectedAttendee.emergency_contact_number} />
-                <div className="md:col-span-2">
-                  <DetailItem label="Medical Conditions" value={selectedAttendee.medical_conditions} />
-                </div>
-                <div className="md:col-span-2">
-                  <DetailItem label="Imam or Teacher?" value={selectedAttendee.position} />
-                </div>
-                <div className="md:col-span-2 bg-gray-50 p-4 rounded-md border border-gray-100">
-                  <span className="block text-xs font-bold text-brand-burgundy uppercase tracking-wider mb-2">Home Address</span>
-                  <p className="text-sm text-gray-900 whitespace-pre-line">
-                    {[
-                      selectedAttendee.address_line,
-                      selectedAttendee.city,
-                      selectedAttendee.postal_code,
-                      selectedAttendee.country
-                    ].filter(Boolean).join('\n')}
-                  </p>
-                </div>
+              <div className="flex items-center space-x-3">
+                
+                {/* Mode Toggles */}
+                {modalMode === 'view' && (
+                  <>
+                    <button 
+                      onClick={() => {
+                        setEditForm(selectedAttendee)
+                        setModalMode('editProfile')
+                      }}
+                      className="px-4 py-2 bg-white text-brand-burgundy-dark font-bold rounded hover:bg-gray-100 transition-colors text-sm shadow-sm"
+                    >
+                      Edit Details
+                    </button>
+                    <button 
+                      onClick={() => setModalMode('editAttendance')}
+                      className="px-4 py-2 bg-brand-gold text-brand-burgundy-dark font-bold rounded hover:bg-yellow-400 transition-colors text-sm shadow-sm"
+                    >
+                      Edit Attendance
+                    </button>
+                  </>
+                )}
+
+                <button 
+                  onClick={closeModal}
+                  className="ml-2 text-brand-gold hover:text-white text-3xl leading-none bg-brand-burgundy-dark hover:bg-brand-burgundy h-10 w-10 rounded-full flex items-center justify-center transition-colors"
+                  title="Close"
+                >
+                  &times;
+                </button>
               </div>
             </div>
+            
+            {/* Modal Body */}
+            <div className="p-6 bg-gray-50 flex-1">
+              
+              {/* MODE 1: EDIT PROFILE */}
+              {modalMode === 'editProfile' && (
+                <div className="space-y-6">
+                  <div className="bg-blue-50 text-blue-800 p-4 rounded-lg border border-blue-200 flex items-center text-sm font-medium">
+                    <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Directly editing profile. Changes saved here bypass the approval queue and go live instantly.
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      {/* DISABLED TICKET ID FIELD */}
+                      {renderInputField("Ticket ID (Barcode)", "tt_ticket_id", false, true)}
+                    </div>
+                    <div className="md:col-span-2">
+                      {renderInputField("Full Name", "attendee_name")}
+                    </div>
+                    <div className="md:col-span-2">
+                      {renderInputField("Arabic Name (Ijazah)", "arabic_name", true)}
+                    </div>
+                    {renderInputField("Email Address", "email")}
+                    {renderInputField("Mobile Number", "mobile_number")}
+                    {renderInputField("Admission Type", "admission_type")}
+                    {renderInputField("Description (Ticket Type)", "description")}
+                    {renderInputField("Emergency Contact Name", "emergency_contact_name")}
+                    {renderInputField("Emergency Contact Number", "emergency_contact_number")}
+                    <div className="md:col-span-2">
+                      {renderInputField("Medical Conditions", "medical_conditions")}
+                    </div>
+                    <div className="md:col-span-2">
+                      {renderInputField("Imam or Teacher?", "position")}
+                    </div>
+                    <div className="md:col-span-2 bg-white p-4 rounded-md border border-brand-burgundy/30 shadow-sm space-y-4">
+                      <span className="block text-xs font-bold text-brand-burgundy uppercase tracking-wider border-b border-gray-100 pb-2">Home Address</span>
+                      {renderInputField("Address Line", "address_line")}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {renderInputField("City", "city")}
+                        {renderInputField("Postal Code", "postal_code")}
+                        {renderInputField("Country", "country")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MODE 2: EDIT ATTENDANCE */}
+              {modalMode === 'editAttendance' && (
+                <div className="space-y-6">
+                  <div className="bg-yellow-50 text-yellow-800 p-4 rounded-lg border border-yellow-200 flex items-center text-sm font-medium">
+                    <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    Tick or untick boxes to instantly override this attendee's official session logs.
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {EVENT_DATES.map((date, idx) => (
+                      <div key={date} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <h4 className="font-bold text-gray-900 text-sm mb-3 border-b border-gray-200 pb-2">
+                          Day {idx + 1} ({date.slice(-5)})
+                        </h4>
+                        
+                        <div className="flex space-x-4">
+                          <label className="flex-1 flex items-center justify-center p-3 rounded-md cursor-pointer border-2 transition-all duration-200 has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 bg-gray-50 border-gray-200 hover:border-brand-burgundy/50">
+                            <input 
+                              type="checkbox" 
+                              className="w-5 h-5 text-brand-burgundy rounded border-gray-300 focus:ring-brand-burgundy"
+                              checked={!!attendanceDraftState[`${date}-am`]}
+                              onChange={() => toggleCheckbox(date, 'am')}
+                              disabled={savingAttendance}
+                            />
+                            <span className="ml-2 font-bold text-gray-700 text-sm">AM</span>
+                          </label>
+                          
+                          <label className="flex-1 flex items-center justify-center p-3 rounded-md cursor-pointer border-2 transition-all duration-200 has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 bg-gray-50 border-gray-200 hover:border-brand-burgundy/50">
+                            <input 
+                              type="checkbox" 
+                              className="w-5 h-5 text-brand-burgundy rounded border-gray-300 focus:ring-brand-burgundy"
+                              checked={!!attendanceDraftState[`${date}-pm`]}
+                              onChange={() => toggleCheckbox(date, 'pm')}
+                              disabled={savingAttendance}
+                            />
+                            <span className="ml-2 font-bold text-gray-700 text-sm">PM</span>
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* MODE 3: VIEW (DEFAULT) */}
+              {modalMode === 'view' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    {renderDetailItem("Ticket ID", selectedAttendee.tt_ticket_id)}
+                  </div>
+                  <div className="md:col-span-2">
+                    {renderDetailItem("Full Name", selectedAttendee.attendee_name)}
+                  </div>
+                  <div className="md:col-span-2">
+                    {renderDetailItem("Arabic Name (Ijazah)", selectedAttendee.arabic_name, true)}
+                  </div>
+                  {renderDetailItem("Email Address", selectedAttendee.email)}
+                  {renderDetailItem("Mobile Number", selectedAttendee.mobile_number)}
+                  {renderDetailItem("Admission Type", selectedAttendee.admission_type)}
+                  {renderDetailItem("Description", selectedAttendee.description)}
+                  {renderDetailItem("Emergency Contact Name", selectedAttendee.emergency_contact_name)}
+                  {renderDetailItem("Emergency Contact Number", selectedAttendee.emergency_contact_number)}
+                  <div className="md:col-span-2">
+                    {renderDetailItem("Medical Conditions", selectedAttendee.medical_conditions)}
+                  </div>
+                  <div className="md:col-span-2">
+                    {renderDetailItem("Imam or Teacher?", selectedAttendee.position)}
+                  </div>
+                  <div className="md:col-span-2 bg-white p-4 rounded-md border border-gray-100 shadow-sm">
+                    <span className="block text-xs font-bold text-brand-burgundy uppercase tracking-wider mb-2">Home Address</span>
+                    <p className="text-sm text-gray-900 whitespace-pre-line">
+                      {[
+                        selectedAttendee.address_line,
+                        selectedAttendee.city,
+                        selectedAttendee.postal_code,
+                        selectedAttendee.country
+                      ].filter(Boolean).join('\n')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer (Only shows when editing) */}
+            {modalMode !== 'view' && (
+              <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-between items-center sticky bottom-0">
+                
+                {modalMode === 'editAttendance' && (
+                  <div>
+                    {hasAttendanceChanges ? (
+                      <span className="text-yellow-600 font-bold text-sm flex items-center">
+                        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        Unsaved Changes
+                      </span>
+                    ) : (
+                      <span className="text-green-600 font-bold text-sm flex items-center">
+                        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        Up to date
+                      </span>
+                    )}
+                  </div>
+                )}
+                
+                {modalMode === 'editProfile' && <div></div>}
+
+                <div className="flex space-x-3">
+                  <button 
+                    onClick={() => setModalMode('view')}
+                    disabled={savingDetails || savingAttendance}
+                    className="px-6 py-2.5 bg-gray-100 text-gray-700 font-bold rounded hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+
+                  {modalMode === 'editProfile' && (
+                    <button 
+                      onClick={handleSaveChanges}
+                      disabled={savingDetails}
+                      className="px-6 py-2.5 bg-brand-burgundy text-brand-gold font-bold rounded hover:bg-brand-burgundy-dark transition disabled:opacity-50 shadow-sm flex items-center"
+                    >
+                      {savingDetails ? 'Saving...' : 'Save Profile'}
+                    </button>
+                  )}
+
+                  {modalMode === 'editAttendance' && (
+                    <button 
+                      onClick={handleSaveAttendance}
+                      disabled={savingAttendance || !hasAttendanceChanges}
+                      className="px-6 py-2.5 bg-brand-burgundy text-brand-gold font-bold rounded hover:bg-brand-burgundy-dark transition disabled:opacity-50 shadow-sm flex items-center"
+                    >
+                      {savingAttendance ? 'Processing...' : 'Confirm Override'}
+                    </button>
+                  )}
+                </div>
+
+              </div>
+            )}
 
           </div>
         </div>
