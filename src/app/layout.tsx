@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { cookies } from 'next/headers'
 import NavigationShell from '@/components/NavigationShell'
+import { Analytics } from '@vercel/analytics/next'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -26,6 +27,7 @@ export default async function RootLayout({
         <NavigationShell isAuthenticated={isAuthenticated}>
           {children}
         </NavigationShell>
+        <Analytics />
       </body>
     </html>
   )
