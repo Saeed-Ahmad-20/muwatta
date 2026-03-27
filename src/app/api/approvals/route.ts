@@ -3,78 +3,71 @@ import { supabase } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
-    const { requestId, action } = await request.json()
+    const { attendeeId, requestIds, approvedFields, action } = await request.json()
 
-    if (!requestId || !action) {
+    if (!attendeeId || !requestIds || !action) {
       return NextResponse.json({ success: false, error: 'Missing parameters' }, { status: 400 })
     }
 
-    if (action === 'reject') {
-      // User rejected it, so we delete the request
-      await supabase.from('attendee_update_requests').delete().eq('id', requestId)
-      return NextResponse.json({ success: true })
-    }
+    if (action === 'process') {
+      
+      const hasApprovedFields = Object.keys(approvedFields).length > 0;
 
-    if (action === 'approve') {
-      // 1. Fetch the requested changes
-      const { data: reqData, error: reqError } = await supabase
-        .from('attendee_update_requests')
-        .select('*')
-        .eq('id', requestId)
-        .single()
+      // 1. If fields were approved, update the main Supabase attendees table
+      if (hasApprovedFields) {
+        const { error: updateError } = await supabase
+          .from('attendees')
+          .update(approvedFields)
+          .eq('id', attendeeId)
 
-      if (reqError || !reqData) throw new Error("Could not find request")
+        if (updateError) throw new Error("Failed to update database")
 
-      // 2. Fetch the original attendee record
-      const { data: attendee, error: attError } = await supabase
-        .from('attendees')
-        .select('*')
-        .eq('id', reqData.attendee_id)
-        .single()
+        // 2. Ticket Tailor Sync Logic
+        // We need to fetch the original attendee data to prevent blanking out the name/email 
+        // if they were not part of the approved fields.
+        const { data: attendee } = await supabase
+          .from('attendees')
+          .select('tt_ticket_id, attendee_name, email')
+          .eq('id', attendeeId)
+          .single()
 
-      if (attError || !attendee) throw new Error("Could not find attendee")
+        if (attendee?.tt_ticket_id) {
+          const apiKey = process.env.TICKET_TAILOR_API_KEY
+          const updatedName = approvedFields.attendee_name || attendee.attendee_name || ''
+          const updatedEmail = approvedFields.email || attendee.email || ''
 
-      // 3. Update the main Supabase table with the new details
-      const updatePayload = {
-        attendee_name: reqData.attendee_name,
-        email: reqData.email,
-        mobile_number: reqData.mobile_number,
-        address_line: reqData.address_line,
-        city: reqData.city,
-        postal_code: reqData.postal_code,
-        country: reqData.country,
-        emergency_contact_name: reqData.emergency_contact_name,
-        emergency_contact_number: reqData.emergency_contact_number,
-        medical_conditions: reqData.medical_conditions,
-        position: reqData.position,
-        arabic_name: reqData.arabic_name
-      }
-
-      await supabase.from('attendees').update(updatePayload).eq('id', attendee.id)
-
-      // 4. Update standard fields in Ticket Tailor (if we have their TT ID)
-      if (attendee.tt_ticket_id) {
-        const apiKey = process.env.TICKET_TAILOR_API_KEY
-        try {
-          await fetch(`https://api.tickettailor.com/v1/issued_tickets/${attendee.tt_ticket_id}`, {
-            method: 'PUT',
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`
-            },
-            body: new URLSearchParams({
-              name: reqData.attendee_name || '',
-              email: reqData.email || ''
+          try {
+            await fetch(`https://api.tickettailor.com/v1/issued_tickets/${attendee.tt_ticket_id}`, {
+              method: 'PUT',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`
+              },
+              body: new URLSearchParams({
+                name: updatedName,
+                email: updatedEmail
+              })
             })
-          })
-        } catch (e) {
-          console.error("Ticket Tailor API Update Failed - but local DB was updated successfully", e)
+          } catch (e) {
+            console.error("Ticket Tailor API Update Failed", e)
+          }
         }
       }
 
-      // 5. Delete the pending request from the queue
-      await supabase.from('attendee_update_requests').delete().eq('id', requestId)
+      // 3. Update the status of all grouped requests in the staging table
+      // If we approved anything, mark it as 'approved', otherwise 'rejected'
+      const statusToApply = hasApprovedFields ? 'approved' : 'rejected';
+      
+      const { error: statusError } = await supabase
+        .from('detail_approval_requests')
+        .update({ 
+          status: statusToApply, 
+          reviewed_at: new Date().toISOString() 
+        })
+        .in('id', requestIds)
+
+      if (statusError) throw new Error("Failed to update request statuses")
 
       return NextResponse.json({ success: true })
     }

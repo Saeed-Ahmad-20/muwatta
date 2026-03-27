@@ -100,13 +100,9 @@ export default function MyDetails() {
         throw new Error("The postcode provided does not match our records for this name.")
       }
 
-      // ==========================================
-      // NEW: ARRIVAL CHECK
-      // ==========================================
       if (!matchedAttendee.checked_in_at) {
         throw new Error("Access Denied: You must complete your Initial Arrival Registration via the 'Check In' tab before you can view your details.")
       }
-      // ==========================================
 
       const { data: records, error: recordsError } = await supabase
         .from('attendance_records')
@@ -128,7 +124,7 @@ export default function MyDetails() {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Calculate the exact changes
+    // Calculate the exact changes for the UI
     const changes: any[] = []
     EDITABLE_FIELDS.forEach(f => {
       const oldVal = normalize(successData[f.key])
@@ -139,7 +135,8 @@ export default function MyDetails() {
           label: f.label, 
           oldVal: oldVal, 
           newVal: newVal,
-          isRtl: f.key === 'arabic_name'
+          isRtl: f.key === 'arabic_name',
+          key: f.key // Keep track of the DB key
         })
       }
     })
@@ -157,22 +154,20 @@ export default function MyDetails() {
     setEditSaving(true)
     
     try {
+      // Build the JSON object of ONLY the changed fields
+      const changesObj: Record<string, string> = {}
+      pendingChanges.forEach(change => {
+        changesObj[change.key] = change.newVal
+      })
+
+      // Insert into our new staging table
       const { error: insertError } = await supabase
-        .from('attendee_update_requests')
+        .from('detail_approval_requests')
         .insert({
           attendee_id: successData.id,
-          attendee_name: editForm.attendee_name,
-          email: editForm.email,
-          mobile_number: editForm.mobile_number,
-          address_line: editForm.address_line,
-          city: editForm.city,
-          postal_code: editForm.postal_code,
-          country: editForm.country,
-          emergency_contact_name: editForm.emergency_contact_name,
-          emergency_contact_number: editForm.emergency_contact_number,
-          medical_conditions: editForm.medical_conditions,
-          position: editForm.position,
-          arabic_name: editForm.arabic_name
+          attendee_name: successData.attendee_name,
+          tt_ticket_id: successData.tt_ticket_id,
+          requested_changes: changesObj
         })
 
       if (insertError) throw insertError

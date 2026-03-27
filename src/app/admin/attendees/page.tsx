@@ -19,6 +19,7 @@ type Attendee = {
   medical_conditions: string
   position: string
   arabic_name: string
+  tt_ticket_id: string | null // <-- Updated to tt_ticket_id
 }
 
 type AttendanceRecord = {
@@ -103,12 +104,13 @@ export default function AttendanceTracker() {
     </div>
   )
 
-  // Real-time filtering logic
+  // Real-time filtering logic updated to use tt_ticket_id
   const filteredAttendees = attendees.filter((attendee) => {
     const searchLower = searchTerm.toLowerCase()
     return (
       attendee.attendee_name.toLowerCase().includes(searchLower) ||
-      attendee.id.toString().includes(searchLower)
+      attendee.id.toString().includes(searchLower) ||
+      (attendee.tt_ticket_id && attendee.tt_ticket_id.toLowerCase().includes(searchLower))
     )
   })
 
@@ -145,7 +147,7 @@ export default function AttendanceTracker() {
           </div>
           <input
             type="text"
-            placeholder="Search by Name or ID..."
+            placeholder="Search Name, ID, or Ticket ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy focus:border-transparent transition-all shadow-sm"
@@ -264,6 +266,10 @@ export default function AttendanceTracker() {
             
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  {/* Updated to use tt_ticket_id */}
+                  <DetailItem label="Ticket ID" value={selectedAttendee.tt_ticket_id} />
+                </div>
                 <div className="md:col-span-2">
                   <DetailItem label="Arabic Name (Ijazah)" value={selectedAttendee.arabic_name} isRtl={true} />
                 </div>
