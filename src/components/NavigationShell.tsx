@@ -47,9 +47,6 @@ export default function NavigationShell({
     }
   }
 
-  // ==========================================
-  // UPDATED: ADDED ICONS TO LINKS
-  // ==========================================
   const publicLinks = [
     { 
       name: 'Home', 
@@ -63,7 +60,6 @@ export default function NavigationShell({
     { name: 'The Muwatta', href: '/info/muwatta' },
     { name: 'Imam Malik', href: '/info/imam-malik' },
     { name: 'Shaykh Al-Yaqoubi', href: '/info/shaykh-yaqoubi' },
-    { name: 'Ashton Central Mosque', href: '/info/ashton-central-mosque' },
     { name: 'Guidance Hub', href: '/info/guidance-hub' },
   ]
 
@@ -80,7 +76,6 @@ export default function NavigationShell({
     { name: 'Ijazah List', href: '/admin/ijazah-list' },
   ]
 
-  // Added icon support to the renderer
   const renderLink = (link: { name: string, href: string, icon?: React.ReactNode }, isNested: boolean = false) => {
     const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href))
     
@@ -122,13 +117,15 @@ export default function NavigationShell({
         w-64`}
       >
         {/* ========================================== */}
-        {/* BRAND LOGO HEADER                          */}
+        {/* DESKTOP LOGO: SECRET DOUBLE-CLICK TRIGGER  */}
         {/* ========================================== */}
-        <div className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark ${isCollapsed ? 'md:justify-center px-0' : ''}`}>
+        <div 
+          className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark select-none ${isCollapsed ? 'md:justify-center px-0' : ''}`}
+          onDoubleClick={() => !isAuthenticated && setIsModalOpen(true)}
+        >
           <h2 className={`text-xl font-bold tracking-wider overflow-hidden whitespace-nowrap text-brand-gold ${isCollapsed ? 'md:hidden' : ''}`}>
             Muwatta
           </h2>
-          {/* Replaced 'M' with an open book icon */}
           <div className={`hidden text-brand-gold ${isCollapsed ? 'md:block' : ''}`}>
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -142,9 +139,6 @@ export default function NavigationShell({
             {publicLinks.map(link => renderLink(link, false))}
           </div>
 
-          {/* ========================================== */}
-          {/* THE EVENT TAB DROPDOWN                     */}
-          {/* ========================================== */}
           <div className="mt-6 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -157,7 +151,6 @@ export default function NavigationShell({
               }}
               className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
             >
-              {/* Replaced 'E' with Calendar Icon */}
               <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
               </div>
@@ -174,9 +167,6 @@ export default function NavigationShell({
             </div>
           </div>
 
-          {/* ========================================== */}
-          {/* ATTENDEE TAB DROPDOWN                      */}
-          {/* ========================================== */}
           <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -189,7 +179,6 @@ export default function NavigationShell({
               }}
               className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
             >
-              {/* Replaced 'U' with User Icon */}
               <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               </div>
@@ -206,9 +195,6 @@ export default function NavigationShell({
             </div>
           </div>
 
-          {/* ========================================== */}
-          {/* ADMIN TAB DROPDOWN                         */}
-          {/* ========================================== */}
           {isAuthenticated && (
             <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
@@ -222,7 +208,6 @@ export default function NavigationShell({
                 }}
                 className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
               >
-                {/* Replaced 'A' with Security Shield Icon */}
                 <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                 </div>
@@ -274,21 +259,24 @@ export default function NavigationShell({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="ml-2 font-bold text-brand-burgundy text-lg">Muwatta</h1>
+            {/* ========================================== */}
+            {/* MOBILE LOGO: SECRET DOUBLE-CLICK TRIGGER   */}
+            {/* ========================================== */}
+            <h1 
+              className="ml-2 font-bold text-brand-burgundy text-lg select-none"
+              onDoubleClick={() => !isAuthenticated && setIsModalOpen(true)}
+            >
+              Muwatta
+            </h1>
           </div>
 
           {!isAuthenticated ? (
-            <button 
-              onClick={() => setIsModalOpen(true)} 
-              className="px-6 py-2 bg-brand-burgundy text-brand-gold rounded font-bold hover:bg-brand-burgundy-dark transition text-sm md:text-base"
-            >
-              Login
-            </button>
+            <div className="hidden md:block w-20"></div> // Empty spacer so layout doesn't jump
           ) : (
             <form action={logoutAction}>
               <button 
                 type="submit" 
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium hover:bg-gray-300 transition text-sm md:text-base"
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium hover:bg-gray-300 transition text-sm md:text-base shadow-sm"
               >
                 Log Out
               </button>
@@ -305,7 +293,7 @@ export default function NavigationShell({
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-brand-burgundy text-brand-gold">
-              <h2 className="text-xl font-bold">Sign In</h2>
+              <h2 className="text-xl font-bold">Admin Sign In</h2>
               <button 
                 onClick={() => { setIsModalOpen(false); setError(''); }}
                 className="text-brand-gold hover:text-white text-2xl leading-none transition-colors"
