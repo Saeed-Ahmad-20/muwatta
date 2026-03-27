@@ -11,7 +11,6 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Unauthorized access.' }, { status: 401 })
     }
 
-    // Fetch all needed data in parallel
     const [
       { data: attendees },
       { data: attendanceRecords }
@@ -23,26 +22,39 @@ export async function GET() {
     const totalAttendees = attendees?.length || 0
     const arrivedAttendees = attendees?.filter(a => a.checked_in_at).length || 0
 
-    // Geographic & Demographic Aggregation
     const uniqueCountries = new Set<string>()
     const uniqueCities = new Set<string>()
     const overallSplits = { 'Male': 0, 'Female': 0, 'Mother & Baby': 0, 'Other': 0 }
     const attendeeMap = new Map()
     
-    // NEW: Tally for the country breakdown
     const countryBreakdown: Record<string, number> = {}
+    const cityBreakdown: Record<string, number> = {}
+    const countryCityBreakdown: Record<string, Record<string, number>> = {}
 
     attendees?.forEach(a => {
+      let cleanCountry = 'Unknown'
+      
       if (a.country && a.country.trim() !== '') {
-        const cleanCountry = a.country.trim()
-        uniqueCountries.add(cleanCountry.toLowerCase())
+        cleanCountry = a.country.trim()
         
-        // Add to breakdown tally
+        // INTERCEPT & RENAME: Change Israel to Palestine
+        if (cleanCountry.toLowerCase() === 'israel') {
+          cleanCountry = 'Palestine'
+        }
+
+        uniqueCountries.add(cleanCountry.toLowerCase())
         countryBreakdown[cleanCountry] = (countryBreakdown[cleanCountry] || 0) + 1
       }
       
       if (a.city && a.city.trim() !== '') {
-        uniqueCities.add(a.city.trim().toLowerCase())
+        const cleanCity = a.city.trim()
+        uniqueCities.add(cleanCity.toLowerCase())
+        cityBreakdown[cleanCity] = (cityBreakdown[cleanCity] || 0) + 1
+        
+        if (!countryCityBreakdown[cleanCountry]) {
+          countryCityBreakdown[cleanCountry] = {}
+        }
+        countryCityBreakdown[cleanCountry][cleanCity] = (countryCityBreakdown[cleanCountry][cleanCity] || 0) + 1
       }
 
       let type = a.admission_type ? a.admission_type.toLowerCase() : ''
@@ -55,7 +67,6 @@ export async function GET() {
       attendeeMap.set(a.id, bucket)
     })
 
-    // Daily Session Aggregation
     const attendanceStats: Record<string, any> = {}
     const dates = ['2026-04-04', '2026-04-05', '2026-04-06', '2026-04-07']
     
@@ -83,7 +94,6 @@ export async function GET() {
       })
     }
 
-    // Clean up Sets before returning JSON
     const finalStats: Record<string, any> = {}
     dates.forEach(date => {
       finalStats[date] = {
@@ -102,7 +112,9 @@ export async function GET() {
         countriesCount: uniqueCountries.size || 1,
         citiesCount: uniqueCities.size,
         overallSplits,
-        countryBreakdown, // <-- Send to frontend
+        countryBreakdown,
+        cityBreakdown,
+        countryCityBreakdown,
         attendanceBreakdown: finalStats
       }
     })
