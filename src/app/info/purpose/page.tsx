@@ -6,13 +6,13 @@ export default function PurposeInfo() {
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-md border-2 border-brand-burgundy overflow-hidden">
         
         {/* Header */}
-        <div className="bg-brand-burgundy p-8 md:p-12 text-center text-brand-gold border-b-4 border-brand-gold relative z-10">
+        <div className="bg-brand-burgundy p-8 md:p-12 text-center text-brand-gold border-b-4 border-brand-gold">
           <h1 className="text-4xl md:text-5xl font-black mb-4 uppercase tracking-widest">Purpose of the Majlis</h1>
           <h2 className="text-xl font-bold tracking-wide">The Tradition of Sama&apos;</h2>
         </div>
 
         {/* Content */}
-        <div className="p-8 md:p-12 space-y-12 text-gray-700 leading-relaxed text-lg relative z-0">
+        <div className="p-8 md:p-12 space-y-12 text-gray-700 leading-relaxed text-lg">
           
           <section>
             <h3 className="text-2xl font-bold text-brand-burgundy mb-4 flex items-center">
@@ -70,7 +70,7 @@ export default function PurposeInfo() {
           {/* ========================================== */}
           {/* SPONSORSHIP & KHATAM BOOKLET SECTION */}
           {/* ========================================== */}
-          <section className="bg-brand-burgundy text-white p-8 md:p-10 rounded-2xl shadow-lg relative overflow-hidden border-4 border-brand-burgundy-dark">
+          <section className="bg-brand-burgundy text-white p-8 md:p-10 rounded-2xl shadow-lg relative overflow-hidden border-4 border-brand-burgundy-dark mt-12 mb-12">
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-gold opacity-10 rounded-full blur-2xl pointer-events-none"></div>
             
             <div className="relative z-10">
@@ -111,7 +111,7 @@ export default function PurposeInfo() {
             </div>
           </section>
 
-          <section className="pl-6 md:pl-8 border-l-4 border-brand-gold bg-yellow-50/30 py-6 pr-6 rounded-r-xl mt-8">
+          <section className="pl-6 md:pl-8 border-l-4 border-brand-gold bg-yellow-50/30 py-6 pr-6 rounded-r-xl">
             <h3 className="text-xl font-bold text-brand-burgundy mb-3">The Ultimate Goal: Achieving Ijazah</h3>
             <p className="text-base">
               Attendees who remain present and attentive for the entirety of the reading will be granted an <strong>Ijazah</strong> (formal certification) at the conclusion of the event. This Ijazah places your name in an unbroken chain of transmission connecting you through Shaykh Al-Yaqoubi directly back to Imam Malik, and ultimately to the Prophet Muhammad ﷺ. It is both a profound honor and a lifelong responsibility to uphold and pass on this sacred trust.
