@@ -21,39 +21,28 @@ export default function NavigationShell({
   
   // Tab Expand/Collapse States
   const [isEventExpanded, setIsEventExpanded] = useState(true)
+  const [isLuminariesExpanded, setIsLuminariesExpanded] = useState(false) // <-- New Section
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
-  const [isAdminExpanded, setIsAdminExpanded] = useState(true)
+  const [isAdminExpanded, setIsAdminExpanded] = useState(false)
   
   const pathname = usePathname()
 
-  // Close mobile menu on route change
   useEffect(() => {
     setIsMobileMenuOpen(false)
   }, [pathname])
 
-  // ==========================================
-  // GLOBAL MOBILE SCROLL LOCK (IRONCLAD)
-  // Locks both body and html to prevent iOS Safari scroll bleed
-  // ==========================================
   useEffect(() => {
     if (isMobileMenuOpen) {
-      // Lock both HTML and Body
       document.body.style.overflow = 'hidden'
       document.documentElement.style.overflow = 'hidden'
-      
-      // Prevent iOS bounce effect
       document.body.style.position = 'fixed'
       document.body.style.width = '100%'
     } else {
-      // Unlock both
       document.body.style.overflow = ''
       document.documentElement.style.overflow = ''
-      
       document.body.style.position = ''
       document.body.style.width = ''
     }
-
-    // Cleanup function in case component unmounts
     return () => {
       document.body.style.overflow = ''
       document.documentElement.style.overflow = ''
@@ -87,8 +76,15 @@ export default function NavigationShell({
     },
   ]
 
-  const eventLinks = [
-    { name: 'Event Details & Schedule', href: '/info/event-details' },
+  // NEW: Split Event Links
+  const eventInfoLinks = [
+    { name: 'Purpose of the Majlis', href: '/info/purpose' },
+    { name: 'Etiquettes & Adab', href: '/info/etiquettes' },
+    { name: 'Daily Schedule', href: '/info/schedule' },
+  ]
+
+  // NEW: Renamed Section for Scholars/Texts
+  const luminariesLinks = [
     { name: 'The Muwatta', href: '/info/muwatta' },
     { name: 'Imam Malik', href: '/info/imam-malik' },
     { name: 'Shaykh Al-Yaqoubi', href: '/info/shaykh-yaqoubi' },
@@ -144,15 +140,11 @@ export default function NavigationShell({
         />
       )}
 
-      {/* UPDATED: Changed h-full to h-[100dvh] to respect mobile browser chrome */}
       <aside className={`bg-brand-burgundy text-white flex flex-col fixed h-[100dvh] z-40 transition-all duration-300 ease-in-out 
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
         md:translate-x-0 ${isCollapsed ? 'md:w-16' : 'md:w-64'} 
         w-64`}
       >
-        {/* ========================================== */}
-        {/* DESKTOP LOGO: SECRET DOUBLE-CLICK TRIGGER  */}
-        {/* ========================================== */}
         <div 
           className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark select-none ${isCollapsed ? 'md:justify-center px-0' : ''}`}
           onDoubleClick={() => !isAuthenticated && setIsModalOpen(true)}
@@ -167,13 +159,13 @@ export default function NavigationShell({
           </div>
         </div>
         
-        {/* UPDATED: Added overscroll-contain to prevent scroll chaining */}
-        <nav className="flex-1 px-3 mt-4 overflow-y-auto overflow-x-hidden overscroll-contain">
+        <nav className="flex-1 px-3 mt-4 overflow-y-auto overflow-x-hidden overscroll-contain pb-20">
           
           <div className="space-y-2">
             {publicLinks.map(link => renderLink(link, false))}
           </div>
 
+          {/* 1. THE EVENT SECTION */}
           <div className="mt-6 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -197,11 +189,41 @@ export default function NavigationShell({
 
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isEventExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
-                {eventLinks.map(link => renderLink(link, true))}
+                {eventInfoLinks.map(link => renderLink(link, true))}
               </div>
             </div>
           </div>
 
+          {/* 2. TEXTS & LUMINARIES SECTION */}
+          <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
+            <button
+              onClick={() => {
+                if (isCollapsed && window.innerWidth >= 768) {
+                  setIsCollapsed(false)
+                  setIsLuminariesExpanded(true)
+                } else {
+                  setIsLuminariesExpanded(!isLuminariesExpanded)
+                }
+              }}
+              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
+            >
+              <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+              </div>
+              <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
+                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Texts & Luminaries</span>
+                <svg className={`w-4 h-4 transition-transform duration-300 ${isLuminariesExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </button>
+
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isLuminariesExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
+              <div className="space-y-2">
+                {luminariesLinks.map(link => renderLink(link, true))}
+              </div>
+            </div>
+          </div>
+
+          {/* 3. ATTENDEE SECTION */}
           <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -230,6 +252,7 @@ export default function NavigationShell({
             </div>
           </div>
 
+          {/* 4. ADMIN SECTION */}
           {isAuthenticated && (
             <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
@@ -261,7 +284,7 @@ export default function NavigationShell({
           )}
         </nav>
 
-        <div className="p-4 border-t border-brand-burgundy-dark hidden md:block">
+        <div className="p-4 border-t border-brand-burgundy-dark hidden md:block bg-brand-burgundy mt-auto">
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="w-full flex items-center justify-center p-2 text-brand-gold hover:text-white hover:bg-brand-burgundy-dark rounded transition-colors duration-200"
@@ -294,9 +317,6 @@ export default function NavigationShell({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            {/* ========================================== */}
-            {/* MOBILE LOGO: SECRET DOUBLE-CLICK TRIGGER   */}
-            {/* ========================================== */}
             <h1 
               className="ml-2 font-bold text-brand-burgundy text-lg select-none"
               onDoubleClick={() => !isAuthenticated && setIsModalOpen(true)}
@@ -306,7 +326,7 @@ export default function NavigationShell({
           </div>
 
           {!isAuthenticated ? (
-            <div className="hidden md:block w-20"></div> // Empty spacer so layout doesn't jump
+            <div className="hidden md:block w-20"></div>
           ) : (
             <form action={logoutAction}>
               <button 

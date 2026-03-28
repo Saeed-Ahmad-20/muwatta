@@ -30,7 +30,7 @@ export default function Home() {
           {/* Call to Action Buttons */}
           <div className="pt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
-              href="/info/event-details" 
+              href="/info/purpose" 
               className="px-8 py-4 bg-brand-gold text-brand-burgundy font-bold rounded-xl text-lg hover:bg-white transition-all shadow-lg hover:shadow-xl w-full sm:w-auto transform hover:-translate-y-1"
             >
               Discover the Event

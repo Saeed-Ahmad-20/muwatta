@@ -2,90 +2,24 @@
 
 import Link from 'next/link'
 
-export default function EventDetailsInfo() {
+export default function ScheduleInfo() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50 py-12 px-4 md:px-8 flex justify-center">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-md border-2 border-brand-burgundy overflow-hidden">
         
         {/* Header */}
         <div className="bg-brand-burgundy p-8 md:p-12 text-center text-brand-gold border-b-4 border-brand-gold">
-          <h1 className="text-4xl md:text-5xl font-black mb-4 uppercase tracking-widest">Event Details</h1>
-          <h2 className="text-xl font-bold tracking-wide">The Majlis & Daily Schedule</h2>
+          <h1 className="text-4xl md:text-5xl font-black mb-4 uppercase tracking-widest">Daily Schedule</h1>
           <p className="text-brand-gold-light mt-3 text-sm font-medium tracking-wide">April 4th – 7th, 2026 | Ashton Central Mosque</p>
         </div>
 
         {/* Content */}
         <div className="p-8 md:p-12 space-y-10 text-gray-700 leading-relaxed text-lg">
-          
-          <section>
-            <h3 className="text-2xl font-bold text-brand-burgundy mb-4 flex items-center">
-              <span className="mr-3 text-2xl">🎙️</span> What is a Majlis of Sama'?
-            </h3>
-            <p className="mb-4">
-              A <em>Majlis of Sama'</em> (Gathering of Audition) is a traditional Islamic educational practice that dates back to the time of the Companions. It involves the continuous, rapid, and accurate recitation of a classical text in the presence of a master scholar.
-            </p>
-            <p>
-              During this event, Shaykh Issam Sboui from Tunisia will read the entire Arabic text of <strong>Al-Muwatta'</strong> aloud. Shaykh Muhammad Al-Yaqoubi will preside over the gathering, listening intently, correcting pronunciation errors, explaining complex or obscure terminology, and providing brief commentary on the legal rulings (Fiqh) and spiritual lessons within the hadith.
-            </p>
-          </section>
-
-          <section className="pl-6 md:pl-8 border-l-4 border-brand-gold bg-yellow-50/30 py-6 pr-4 rounded-r-xl">
-            <h3 className="text-xl font-bold text-brand-burgundy mb-3">The Goal: Achieving Ijazah</h3>
-            <p className="text-base">
-              Attendees who remain present and attentive for the entirety of the reading will be granted an <strong>Ijazah</strong> (formal certification) at the conclusion of the event. This Ijazah places your name in an unbroken chain of transmission connecting you through Shaykh Al-Yaqoubi directly back to Imam Malik, and ultimately to the Prophet Muhammad ﷺ.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-2xl font-bold text-brand-burgundy mb-4 flex items-center">
-              <span className="mr-3 text-2xl">🕌</span> Venue & Etiquette (Adab)
-            </h3>
-            <p className="mb-4">
-              The recital is hosted at <strong>Ashton Central Mosque</strong> (Hillgate St, Ashton-under-Lyne OL6 9JA). As we will be gathering in a house of Allah to read the words of His Messenger ﷺ, strict etiquette is required:
-            </p>
-            <ul className="list-none space-y-4 mt-4 text-base">
-              <li className="flex items-start bg-gray-50 p-4 rounded-lg border border-gray-100">
-                <span className="text-brand-gold text-2xl mr-4 leading-none">•</span>
-                <span><strong>Wudu:</strong> Attendees are highly encouraged to remain in a state of ritual purity (Wudu) throughout the reading.</span>
-              </li>
-              <li className="flex items-start bg-gray-50 p-4 rounded-lg border border-gray-100">
-                <span className="text-brand-gold text-2xl mr-4 leading-none">•</span>
-                <span><strong>Silence:</strong> Absolute silence is required while the text is being recited. Side conversations, phone usage, and disruptions break the sanctity of the transmission.</span>
-              </li>
-              
-              {/* ========================================== */}
-              {/* UPDATED: INTEGRATED PDF DOWNLOAD BOX       */}
-              {/* ========================================== */}
-              <li className="flex items-start bg-brand-burgundy/5 p-5 md:p-6 rounded-xl border-2 border-brand-burgundy/20 relative overflow-hidden shadow-sm">
-                <span className="text-brand-burgundy text-3xl mr-4 leading-none mt-1 hidden sm:block">📖</span>
-                <div className="flex-1">
-                  <strong className="text-brand-burgundy text-xl block mb-2 flex items-center">
-                    <span className="sm:hidden mr-2">📖</span> Following Along (Official Text)
-                  </strong>
-                  <p className="text-gray-700 mb-5 leading-relaxed">
-                    To truly benefit from the Majlis, attendees must follow the text closely. <strong>We have provided the exact, official Arabic edition of the Muwatta' that will be recited.</strong> Please download it below to follow along and take notes.
-                  </p>
-                  <a
-                    href="/downloads/muwatta.pdf"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download="Muwatta_Recital_Text.pdf"
-                    className="inline-flex items-center justify-center px-6 py-3 bg-brand-burgundy text-brand-gold font-bold rounded-lg hover:bg-brand-burgundy-dark transition-colors shadow-md text-sm md:text-base w-full sm:w-auto"
-                  >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    Download Official Recital PDF
-                  </a>
-                </div>
-              </li>
-              {/* ========================================== */}
-              
-            </ul>
-          </section>
 
           {/* Daily Schedule */}
           <section>
             <h3 className="text-2xl font-bold text-brand-burgundy mb-6 flex items-center border-b border-gray-200 pb-3">
-              <span className="mr-3 text-2xl">⏱️</span> Daily Schedule (April 4 - 7)
+              <span className="mr-3 text-2xl">⏱️</span> Standard Timetable
             </h3>
             
             <div className="relative border-l-2 border-brand-gold ml-3 md:ml-4 space-y-8 pb-4">
@@ -203,7 +137,6 @@ export default function EventDetailsInfo() {
           </section>
 
         </div>
-
       </div>
     </div>
   )

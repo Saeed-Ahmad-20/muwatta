@@ -19,52 +19,55 @@ export default function ShaykhYaqoubiInfo() {
             </p>
           </section>
 
-          <section className="pl-6 md:pl-8 border-l-4 border-brand-burgundy">
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">Early Life and Education</h3>
-            <p className="mb-4">
-              Born into a family of highly distinguished religious scholars, Shaykh Muhammad’s formal education began before he could even walk. His father, the great polymath Shaykh Ibrahim al-Yaqoubi, was the Imam and instructor at the historic Umayyad Mosque in Damascus. 
-            </p>
-            <p>
-              Under his father's intensive tutelage, the Shaykh memorized the foundational texts of Arabic grammar, Aqidah (theology), and Fiqh (jurisprudence) as a young boy. By his early twenties, he had already mastered the major sciences of Islam and was granted extensive Ijazahs (authorizations to teach and transmit) from the senior scholars of the Levant.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-2xl font-bold text-brand-burgundy mb-4 flex items-center">
-              <span className="mr-3 text-2xl">🔗</span> Master of the Chains of Transmission
-            </h3>
-            <p className="mb-4">
-              In the science of Hadith, the strength and shortness of a scholar's chain of transmission (Sanad) back to the Prophet ﷺ or the authors of the major books is highly prized. Shaykh Al-Yaqoubi holds some of the shortest and most elevated chains of transmission in the world today.
-            </p>
-            <p>
-              He has spent his life traveling to meet the oldest and most specialized masters of Hadith, acquiring authorizations that connect him directly to Imam Malik, Imam al-Bukhari, and the rest of the classical compilers. It is this profound connection that makes his recitals and Ijazah gatherings highly sought after by students globally.
-            </p>
+          <section className="grid md:grid-cols-2 gap-8 my-8">
+            <div className="bg-gray-50 p-8 rounded-xl border border-gray-200 shadow-sm">
+              <div className="text-4xl mb-4 text-center">🏛️</div>
+              <h3 className="text-2xl font-bold text-brand-burgundy mb-3">Early Life and Education</h3>
+              <p className="text-base leading-relaxed">
+                Born into a family of highly distinguished religious scholars, Shaykh Muhammad's formal education began from an early age. His father, the great polymath Shaykh Ibrahim al-Yaqoubi, was the Imam and instructor at the historic Umayyad Mosque in Damascus.
+              </p>
+              <p className="text-base leading-relaxed mt-4">
+                Under his father's intensive tutelage, the Shaykh memorized the foundational texts of Arabic grammar, Aqidah (theology), and Fiqh (jurisprudence) as a young boy. By his early twenties, he had already mastered the major sciences of Islam and was granted extensive Ijazahs.
+              </p>
+            </div>
+            
+            <div className="bg-gray-50 p-8 rounded-xl border border-gray-200 shadow-sm">
+              <div className="text-4xl mb-4 text-center">🔗</div>
+              <h3 className="text-2xl font-bold text-brand-burgundy mb-3">Master of Transmission Chains</h3>
+              <p className="text-base leading-relaxed">
+                In the science of Hadith, the strength and shortness of a scholar's chain of transmission back to the Prophet ﷺ is highly prized. Shaykh Al-Yaqoubi holds some of the shortest and most elevated chains in the world today.
+              </p>
+              <p className="text-base leading-relaxed mt-4">
+                He has spent his life traveling to meet the oldest masters of Hadith, acquiring authorizations that connect him directly to Imam Malik, Imam al-Bukhari, and the classical compilers. This profound connection makes his Ijazah gatherings highly sought after globally.
+              </p>
+            </div>
           </section>
 
           <section>
             <h3 className="text-2xl font-bold text-brand-burgundy mb-4">Global Impact and Teaching</h3>
             <p className="mb-4">
-              Regularly listed among the <em>500 Most Influential Muslims</em>, Shaykh Al-Yaqoubi is celebrated for his ability to bridge the depth of classical Islamic scholarship with the realities of the modern world. Fluent in several languages, he served as a researcher and instructor in the West—including time spent in Sweden and the United States—before returning to Syria, and eventually relocating due to the conflict.
+              Regularly listed among the <em>500 Most Influential Muslims</em>, Shaykh Al-Yaqoubi is celebrated for bridging classical Islamic scholarship with modern realities. Fluent in several languages, he served as a researcher and instructor in the West before returning to Syria and eventually relocating to Morocco.
             </p>
-            <p>
+            <p className="mb-6">
               His teachings are characterized by three major pillars:
             </p>
-            <ul className="list-none space-y-4 mt-4">
+            <ul className="space-y-4">
               <li className="flex items-start bg-gray-50 p-4 rounded-lg border border-gray-100">
                 <span className="text-brand-gold text-2xl mr-4 leading-none">•</span>
                 <span><strong>Rigorous Orthodoxy:</strong> The uncompromising defense and detailed teaching of mainstream Sunni theology (Ash'ari/Maturidi) and jurisprudence.</span>
               </li>
               <li className="flex items-start bg-gray-50 p-4 rounded-lg border border-gray-100">
                 <span className="text-brand-gold text-2xl mr-4 leading-none">•</span>
-                <span><strong>Spiritual Purification (Tassawuf):</strong> Guiding students in the purification of the heart, strictly rooted in the boundaries of the Qur'an and Sunnah.</span>
+                <span><strong>Spiritual Purification:</strong> Guiding students in heart purification (Tasawwuf), strictly rooted in the boundaries of the Qur'an and Sunnah.</span>
               </li>
               <li className="flex items-start bg-gray-50 p-4 rounded-lg border border-gray-100">
                 <span className="text-brand-gold text-2xl mr-4 leading-none">•</span>
-                <span><strong>Defending the Faith:</strong> He has been one of the most vocal and academically rigorous voices refuting extremism and ideological deviations in the modern era, authoring definitive works dismantling extremist theology.</span>
+                <span><strong>Defending the Faith:</strong> He has been a vocal and academically rigorous voice refuting extremism and ideological deviations in the modern era.</span>
               </li>
             </ul>
           </section>
           
+          {/* Restored the original "honor of having the shaykh" section */}
           <div className="bg-brand-burgundy text-brand-gold p-8 rounded-xl mt-8 text-center shadow-md border-2 border-brand-gold">
             <h4 className="text-xl font-bold mb-3">The Recital</h4>
             <p className="font-medium text-brand-gold-light leading-relaxed">
@@ -72,9 +75,18 @@ export default function ShaykhYaqoubiInfo() {
             </p>
           </div>
 
+          {/* Kept the tags from the improved version */}
+          <div className="pt-6">
+            <div className="flex flex-wrap gap-2 justify-center">
+              <span className="px-3 py-1 bg-brand-burgundy/10 text-brand-burgundy rounded-full text-sm font-medium">Descendant of Prophet ﷺ</span>
+              <span className="px-3 py-1 bg-brand-burgundy/10 text-brand-burgundy rounded-full text-sm font-medium">Master of Hadith Chains</span>
+              <span className="px-3 py-1 bg-brand-burgundy/10 text-brand-burgundy rounded-full text-sm font-medium">Global Islamic Scholar</span>
+            </div>
+          </div>
+
         </div>
 
       </div>
     </div>
-  )
+  );
 }
