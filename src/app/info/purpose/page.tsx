@@ -6,13 +6,13 @@ export default function PurposeInfo() {
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-md border-2 border-brand-burgundy overflow-hidden">
         
         {/* Header */}
-        <div className="bg-brand-burgundy p-8 md:p-12 text-center text-brand-gold border-b-4 border-brand-gold">
+        <div className="bg-brand-burgundy p-8 md:p-12 text-center text-brand-gold border-b-4 border-brand-gold relative z-10">
           <h1 className="text-4xl md:text-5xl font-black mb-4 uppercase tracking-widest">Purpose of the Majlis</h1>
           <h2 className="text-xl font-bold tracking-wide">The Tradition of Sama&apos;</h2>
         </div>
 
         {/* Content */}
-        <div className="p-8 md:p-12 space-y-12 text-gray-700 leading-relaxed text-lg">
+        <div className="p-8 md:p-12 space-y-12 text-gray-700 leading-relaxed text-lg relative z-0">
           
           <section>
             <h3 className="text-2xl font-bold text-brand-burgundy mb-4 flex items-center">
@@ -68,10 +68,9 @@ export default function PurposeInfo() {
           </section>
 
           {/* ========================================== */}
-          {/* NEW SPONSORSHIP & KHATAM BOOKLET SECTION   */}
+          {/* SPONSORSHIP & KHATAM BOOKLET SECTION */}
           {/* ========================================== */}
           <section className="bg-brand-burgundy text-white p-8 md:p-10 rounded-2xl shadow-lg relative overflow-hidden border-4 border-brand-burgundy-dark">
-            {/* Decorative background circle */}
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-gold opacity-10 rounded-full blur-2xl pointer-events-none"></div>
             
             <div className="relative z-10">

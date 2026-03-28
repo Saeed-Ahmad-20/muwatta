@@ -19,11 +19,10 @@ export default function NavigationShell({
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   
-  // Tab Expand/Collapse States
   const [isEventExpanded, setIsEventExpanded] = useState(true)
-  const [isLuminariesExpanded, setIsLuminariesExpanded] = useState(false) // <-- New Section
+  const [isLuminariesExpanded, setIsLuminariesExpanded] = useState(false)
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
-  const [isAdminExpanded, setIsAdminExpanded] = useState(false)
+  const [isAdminExpanded, setIsAdminExpanded] = useState(true)
   
   const pathname = usePathname()
 
@@ -76,14 +75,12 @@ export default function NavigationShell({
     },
   ]
 
-  // NEW: Split Event Links
   const eventInfoLinks = [
     { name: 'Purpose of the Majlis', href: '/info/purpose' },
     { name: 'Etiquettes & Adab', href: '/info/etiquettes' },
     { name: 'Daily Schedule', href: '/info/schedule' },
   ]
 
-  // NEW: Renamed Section for Scholars/Texts
   const luminariesLinks = [
     { name: 'The Muwatta', href: '/info/muwatta' },
     { name: 'Imam Malik', href: '/info/imam-malik' },
@@ -104,6 +101,35 @@ export default function NavigationShell({
     { name: 'Attendance Approvals', href: '/admin/attendance-approvals' },
     { name: 'Ijazah List', href: '/admin/ijazah-list' },
   ]
+
+  const getPageTitle = () => {
+    const titles: Record<string, string> = {
+      '/': 'Home',
+      '/info/purpose': 'Purpose of the Majlis',
+      '/info/etiquettes': 'Etiquettes & Adab',
+      '/info/schedule': 'Daily Schedule',
+      '/info/muwatta': 'The Muwatta',
+      '/info/imam-malik': 'Imam Malik',
+      '/info/shaykh-yaqoubi': 'Shaykh Al-Yaqoubi',
+      '/info/guidance-hub': 'Guidance Hub',
+      '/attendee/check-in': 'Event Arrival',
+      '/attendee/register': 'Register Attendance',
+      '/attendee/my-details': 'My Details',
+      '/admin/statistics': 'Dashboard & Statistics',
+      '/admin/attendees': 'Attendees Database',
+      '/admin/approvals': 'Detail Approvals',
+      '/admin/attendance-approvals': 'Attendance Approvals',
+      '/admin/ijazah-list': 'Ijazah List'
+    }
+
+    if (titles[pathname]) return titles[pathname]
+    
+    if (pathname.startsWith('/attendee/')) return 'Attendee Portal'
+    if (pathname.startsWith('/admin/')) return 'Admin Portal'
+    if (pathname.startsWith('/info/')) return 'Event Information'
+    
+    return 'Muwatta Event'
+  }
 
   const renderLink = (link: { name: string, href: string, icon?: React.ReactNode }, isNested: boolean = false) => {
     const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href))
@@ -150,7 +176,7 @@ export default function NavigationShell({
           onDoubleClick={() => !isAuthenticated && setIsModalOpen(true)}
         >
           <h2 className={`text-xl font-bold tracking-wider overflow-hidden whitespace-nowrap text-brand-gold ${isCollapsed ? 'md:hidden' : ''}`}>
-            Muwatta
+            Muwatta Recital
           </h2>
           <div className={`hidden text-brand-gold ${isCollapsed ? 'md:block' : ''}`}>
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,7 +191,6 @@ export default function NavigationShell({
             {publicLinks.map(link => renderLink(link, false))}
           </div>
 
-          {/* 1. THE EVENT SECTION */}
           <div className="mt-6 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -194,7 +219,6 @@ export default function NavigationShell({
             </div>
           </div>
 
-          {/* 2. TEXTS & LUMINARIES SECTION */}
           <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -223,7 +247,6 @@ export default function NavigationShell({
             </div>
           </div>
 
-          {/* 3. ATTENDEE SECTION */}
           <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -252,7 +275,6 @@ export default function NavigationShell({
             </div>
           </div>
 
-          {/* 4. ADMIN SECTION */}
           {isAuthenticated && (
             <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
@@ -307,36 +329,50 @@ export default function NavigationShell({
       </aside>
 
       <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
-        <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between md:justify-end px-4 md:px-8 sticky top-0 z-10">
-          <div className="flex items-center md:hidden">
+        
+        {/* ========================================== */}
+        {/* REDESIGNED HEADER                          */}
+        {/* ========================================== */}
+        <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 border-b border-gray-100">
+          
+          <div className="flex items-center flex-1">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="text-brand-burgundy hover:text-brand-burgundy-dark focus:outline-none p-2 -ml-2"
+              className="text-brand-burgundy hover:text-brand-burgundy-dark focus:outline-none p-2 -ml-2 md:hidden"
             >
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
+            
+            {/* Mobile Title */}
             <h1 
-              className="ml-2 font-bold text-brand-burgundy text-lg select-none"
+              className="ml-2 font-black text-brand-burgundy text-xl select-none md:hidden leading-tight"
               onDoubleClick={() => !isAuthenticated && setIsModalOpen(true)}
             >
-              Muwatta
+              {getPageTitle()}
+            </h1>
+            
+            {/* Desktop Title */}
+            <h1 className="hidden md:block font-black text-brand-burgundy text-2xl tracking-tight select-none">
+              {getPageTitle()}
             </h1>
           </div>
 
-          {!isAuthenticated ? (
-            <div className="hidden md:block w-20"></div>
-          ) : (
-            <form action={logoutAction}>
-              <button 
-                type="submit" 
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium hover:bg-gray-300 transition text-sm md:text-base shadow-sm"
-              >
-                Log Out
-              </button>
-            </form>
-          )}
+          <div className="flex items-center gap-4">
+            {!isAuthenticated ? (
+              <div className="w-8"></div> 
+            ) : (
+              <form action={logoutAction}>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-gray-100 text-gray-800 rounded font-medium hover:bg-gray-200 transition text-sm md:text-base shadow-sm border border-gray-200"
+                >
+                  Log Out
+                </button>
+              </form>
+            )}
+          </div>
         </header>
 
         <main className="flex-1 w-full overflow-x-hidden">
