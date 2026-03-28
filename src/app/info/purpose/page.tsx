@@ -68,9 +68,10 @@ export default function PurposeInfo() {
           </section>
 
           {/* ========================================== */}
-          {/* SPONSORSHIP & KHATAM BOOKLET SECTION */}
+          {/* SPONSORSHIP & KHATAM BOOKLET SECTION       */}
+          {/* ADDED: 'z-0' to safely contain the z-index */}
           {/* ========================================== */}
-          <section className="bg-brand-burgundy text-white p-8 md:p-10 rounded-2xl shadow-lg relative overflow-hidden border-4 border-brand-burgundy-dark mt-12 mb-12">
+          <section className="bg-brand-burgundy text-white p-8 md:p-10 rounded-2xl shadow-lg relative z-0 overflow-hidden border-4 border-brand-burgundy-dark mt-12 mb-12">
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-gold opacity-10 rounded-full blur-2xl pointer-events-none"></div>
             
             <div className="relative z-10">

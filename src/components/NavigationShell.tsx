@@ -328,12 +328,12 @@ export default function NavigationShell({
         </div>
       </aside>
 
-      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
+      {/* ========================================== */}
+      {/* UPDATED: flex-1 handling for sticky        */}
+      {/* ========================================== */}
+      <div className={`flex flex-col min-h-screen w-full transition-all duration-300 ease-in-out ${isCollapsed ? 'md:pl-16' : 'md:pl-64'}`}>
         
-        {/* ========================================== */}
-        {/* REDESIGNED HEADER                          */}
-        {/* ========================================== */}
-        <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 border-b border-gray-100">
+        <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 border-b border-gray-100">
           
           <div className="flex items-center flex-1">
             <button 
@@ -375,7 +375,8 @@ export default function NavigationShell({
           </div>
         </header>
 
-        <main className="flex-1 w-full overflow-x-hidden">
+        {/* Removed overflow-x-hidden here as it breaks sticky */}
+        <main className="flex-1 w-full">
           {children}
         </main>
       </div>
