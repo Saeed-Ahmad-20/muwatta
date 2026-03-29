@@ -263,7 +263,7 @@ export default function NavigationShell({
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               </div>
               <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
-                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee Portal</span>
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
