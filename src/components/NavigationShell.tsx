@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { loginAction, logoutAction } from '@/app/actions'
@@ -25,6 +25,7 @@ export default function NavigationShell({
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
   
   const pathname = usePathname()
+  const lastTitleTapRef = useRef(0)
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
@@ -49,6 +50,23 @@ export default function NavigationShell({
       document.body.style.width = ''
     }
   }, [isMobileMenuOpen])
+
+  const openAdminLogin = () => {
+    if (!isAuthenticated) {
+      setIsModalOpen(true)
+    }
+  }
+
+  const handleTitleTap = () => {
+    const now = Date.now()
+    const DOUBLE_TAP_DELAY = 400
+
+    if (now - lastTitleTapRef.current < DOUBLE_TAP_DELAY) {
+      openAdminLogin()
+    }
+
+    lastTitleTapRef.current = now
+  }
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -173,7 +191,8 @@ export default function NavigationShell({
       >
         <div 
           className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark select-none ${isCollapsed ? 'md:justify-center px-0' : ''}`}
-          onDoubleClick={() => !isAuthenticated && setIsModalOpen(true)}
+          onDoubleClick={openAdminLogin}
+          onTouchEnd={handleTitleTap}
         >
           <h2 className={`text-xl font-bold tracking-wider overflow-hidden whitespace-nowrap text-brand-gold ${isCollapsed ? 'md:hidden' : ''}`}>
             Muwatta Recital
@@ -328,9 +347,6 @@ export default function NavigationShell({
         </div>
       </aside>
 
-      {/* ========================================== */}
-      {/* UPDATED: flex-1 handling for sticky        */}
-      {/* ========================================== */}
       <div className={`flex flex-col min-h-screen w-full transition-all duration-300 ease-in-out ${isCollapsed ? 'md:pl-16' : 'md:pl-64'}`}>
         
         <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 border-b border-gray-100">
@@ -345,15 +361,14 @@ export default function NavigationShell({
               </svg>
             </button>
             
-            {/* Mobile Title */}
             <h1 
               className="ml-2 font-black text-brand-burgundy text-xl select-none md:hidden leading-tight"
-              onDoubleClick={() => !isAuthenticated && setIsModalOpen(true)}
+              onDoubleClick={openAdminLogin}
+              onTouchEnd={handleTitleTap}
             >
               {getPageTitle()}
             </h1>
             
-            {/* Desktop Title */}
             <h1 className="hidden md:block font-black text-brand-burgundy text-2xl tracking-tight select-none">
               {getPageTitle()}
             </h1>
@@ -375,7 +390,6 @@ export default function NavigationShell({
           </div>
         </header>
 
-        {/* Removed overflow-x-hidden here as it breaks sticky */}
         <main className="flex-1 w-full">
           {children}
         </main>
