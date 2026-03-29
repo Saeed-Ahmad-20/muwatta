@@ -10,6 +10,13 @@ const EVENT_DATES = [
   { id: '2026-04-07', label: 'Tuesday, April 7th' },
 ]
 
+// ============================================
+// 🔧 TESTING OVERRIDE - Remove for production!
+// ============================================
+const TESTING_MODE = true
+const FAKE_NOW = new Date('2026-04-06T11:00:00+01:00') // April 6, 11:00 AM BST
+// ============================================
+
 export default function RegisterAttendance() {
   const [isMounted, setIsMounted] = useState(false)
   const [idNumber, setIdNumber] = useState('')
@@ -50,7 +57,10 @@ export default function RegisterAttendance() {
     if (!isMounted || timeOffset === null) return 
 
     const checkTimeAndDates = () => {
-      const actualNow = new Date(Date.now() + timeOffset) 
+      // 🔧 TESTING: Use fake time instead of real time
+      const actualNow = TESTING_MODE
+        ? FAKE_NOW
+        : new Date(Date.now() + timeOffset)
       
       const formatter = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Europe/London',

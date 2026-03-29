@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
+// ============================================
+// 🔧 TESTING OVERRIDE - Remove for production!
+// ============================================
+const TESTING_MODE = true
+// ============================================
+
 export async function POST(request: Request) {
 
-const unlockTime = new Date('2026-04-03T17:00:00+01:00').getTime()
-if (Date.now() < unlockTime) {
-  return NextResponse.json({ success: false, error: 'Check-in is not open yet.' }, { status: 403 })
-}
+  // 🔧 TESTING: Skip the time gate when testing
+  if (!TESTING_MODE) {
+    const unlockTime = new Date('2026-04-03T17:00:00+01:00').getTime()
+    if (Date.now() < unlockTime) {
+      return NextResponse.json({ success: false, error: 'Check-in is not open yet.' }, { status: 403 })
+    }
+  }
 
   try {
     const { ticketCode } = await request.json()
