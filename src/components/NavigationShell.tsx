@@ -28,7 +28,7 @@ export default function NavigationShell({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   
   const [isEventExpanded, setIsEventExpanded] = useState(true)
-  const [isLuminariesExpanded, setIsLuminariesExpanded] = useState(false)
+  const [isLuminariesExpanded, setIsLuminariesExpanded] = useState(true)
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
 
