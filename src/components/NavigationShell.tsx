@@ -5,6 +5,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { loginAction, logoutAction } from '@/app/actions'
 
+// ==========================================
+// 🔒 BRUTE FORCE PROTECTION CONFIG
+// ==========================================
+const MAX_ATTEMPTS = 5            // Lock after this many failed tries
+const LOCKOUT_DURATION_MS = 300000 // 5 minute lockout
+const ATTEMPT_DELAY_MS = 1000     // Base delay between attempts (multiplied by attempt count)
+// ==========================================
+
 export default function NavigationShell({ 
   isAuthenticated, 
   children 
@@ -23,6 +31,11 @@ export default function NavigationShell({
   const [isLuminariesExpanded, setIsLuminariesExpanded] = useState(false)
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
+
+  // 🔒 Brute Force Protection State
+  const [failedAttempts, setFailedAttempts] = useState(0)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
+  const [lockCountdown, setLockCountdown] = useState(0)
   
   const pathname = usePathname()
   const lastTitleTapRef = useRef(0)
@@ -51,6 +64,49 @@ export default function NavigationShell({
     }
   }, [isMobileMenuOpen])
 
+<<<<<<< Updated upstream
+=======
+  // 🔒 Restore lockout state from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('admin_login_lockout')
+      if (stored) {
+        const { until, attempts } = JSON.parse(stored)
+        if (until && Date.now() < until) {
+          setLockedUntil(until)
+          setFailedAttempts(attempts || MAX_ATTEMPTS)
+        } else {
+          // Lockout expired — clear it
+          localStorage.removeItem('admin_login_lockout')
+        }
+      }
+    } catch {}
+  }, [])
+
+  // 🔒 Countdown timer for lockout
+  useEffect(() => {
+    if (!lockedUntil) {
+      setLockCountdown(0)
+      return
+    }
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000))
+      setLockCountdown(remaining)
+
+      if (remaining <= 0) {
+        setLockedUntil(null)
+        setFailedAttempts(0)
+        localStorage.removeItem('admin_login_lockout')
+      }
+    }
+
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [lockedUntil])
+
+>>>>>>> Stashed changes
   const openAdminLogin = () => {
     if (!isAuthenticated) {
       setIsModalOpen(true)
@@ -60,6 +116,7 @@ export default function NavigationShell({
   const handleTitleTap = () => {
     const now = Date.now()
     const DOUBLE_TAP_DELAY = 400
+<<<<<<< Updated upstream
 
     if (now - lastTitleTapRef.current < DOUBLE_TAP_DELAY) {
       openAdminLogin()
@@ -68,21 +125,68 @@ export default function NavigationShell({
     lastTitleTapRef.current = now
   }
 
+=======
+    if (now - lastTitleTapRef.current < DOUBLE_TAP_DELAY) {
+      openAdminLogin()
+    }
+    lastTitleTapRef.current = now
+  }
+
+  const isLockedOut = lockedUntil !== null && Date.now() < lockedUntil
+
+>>>>>>> Stashed changes
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    // 🔒 Block if locked out
+    if (isLockedOut) {
+      setError(`Too many failed attempts. Please wait ${lockCountdown} seconds.`)
+      return
+    }
+
     setLoading(true)
     setError('')
+
+    // 🔒 Progressive delay — the more failures, the longer the wait
+    if (failedAttempts > 0) {
+      const delay = Math.min(failedAttempts * ATTEMPT_DELAY_MS, 5000)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
     
     const formData = new FormData(e.currentTarget)
     const res = await loginAction(formData)
     
     if (res.success) {
+      // 🔒 Reset on success
+      setFailedAttempts(0)
+      setLockedUntil(null)
+      localStorage.removeItem('admin_login_lockout')
+
       setIsModalOpen(false)
       window.location.href = '/admin/attendees'
     } else {
-      setError(res.error || 'Login failed')
+      const newAttempts = failedAttempts + 1
+      setFailedAttempts(newAttempts)
+
+      // 🔒 Lock out after MAX_ATTEMPTS
+      if (newAttempts >= MAX_ATTEMPTS) {
+        const until = Date.now() + LOCKOUT_DURATION_MS
+        setLockedUntil(until)
+        localStorage.setItem('admin_login_lockout', JSON.stringify({ until, attempts: newAttempts }))
+        setError(`Too many failed attempts. Login disabled for 5 minutes.`)
+      } else {
+        const remaining = MAX_ATTEMPTS - newAttempts
+        setError(`${res.error || 'Login failed'}. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`)
+      }
+
       setLoading(false)
     }
+  }
+
+  const formatCountdown = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
   }
 
   const publicLinks = [
@@ -409,21 +513,75 @@ export default function NavigationShell({
             </div>
             
             <form onSubmit={handleLogin} className="p-6 space-y-4">
-              {error && (
+              
+              {/* 🔒 Lockout Banner */}
+              {isLockedOut && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span className="font-bold text-red-700 text-sm">Login Temporarily Disabled</span>
+                  </div>
+                  <p className="text-red-600 text-sm">
+                    Too many failed attempts. Try again in{' '}
+                    <span className="font-black text-lg">{formatCountdown(lockCountdown)}</span>
+                  </p>
+                </div>
+              )}
+
+              {error && !isLockedOut && (
                 <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded text-sm text-center">
                   {error}
                 </div>
               )}
+
               <div>
                 <label className="block text-sm font-bold text-brand-burgundy mb-1">Username</label>
-                <input type="text" name="username" required className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy"/>
+                <input 
+                  type="text" 
+                  name="username" 
+                  required 
+                  disabled={isLockedOut}
+                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
               </div>
               <div>
                 <label className="block text-sm font-bold text-brand-burgundy mb-1">Password</label>
-                <input type="password" name="password" required className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy"/>
+                <input 
+                  type="password" 
+                  name="password" 
+                  required 
+                  disabled={isLockedOut}
+                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
               </div>
-              <button type="submit" disabled={loading} className="w-full py-3 px-4 bg-brand-burgundy text-brand-gold rounded hover:bg-brand-burgundy-dark transition font-bold mt-2 disabled:opacity-50">
-                {loading ? 'Verifying...' : 'Sign In'}
+
+              {/* 🔒 Attempt Counter */}
+              {failedAttempts > 0 && !isLockedOut && (
+                <div className="flex items-center justify-center space-x-1">
+                  {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                        i < failedAttempts ? 'bg-red-500' : 'bg-gray-200'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                disabled={loading || isLockedOut} 
+                className="w-full py-3 px-4 bg-brand-burgundy text-brand-gold rounded hover:bg-brand-burgundy-dark transition font-bold mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLockedOut 
+                  ? `Locked (${formatCountdown(lockCountdown)})` 
+                  : loading 
+                    ? 'Verifying...' 
+                    : 'Sign In'
+                }
               </button>
             </form>
           </div>

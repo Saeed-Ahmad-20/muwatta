@@ -7,6 +7,59 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 const TESTING_MODE = true
 // ============================================
 
+// ==========================================
+// 🔒 CONCURRENCY LIMITER (Server-Side Queue)
+//    Protects the database from being overwhelmed
+//    by 500+ simultaneous check-in requests. Only
+//    N requests hit Supabase at a time — the rest
+//    wait in line.
+// ==========================================
+const MAX_CONCURRENT = 10       // Max simultaneous DB operations
+const MAX_QUEUE_SIZE = 500      // Max waiting requests before rejecting
+const QUEUE_TIMEOUT_MS = 15000  // Max time a request waits in queue
+
+let activeCount = 0
+let queueSize = 0
+
+function acquireSlot(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // If there's room, go immediately
+    if (activeCount < MAX_CONCURRENT) {
+      activeCount++
+      return resolve()
+    }
+
+    // If the queue is full, reject immediately
+    if (queueSize >= MAX_QUEUE_SIZE) {
+      return reject(new Error('SERVER_BUSY'))
+    }
+
+    queueSize++
+
+    // Set a timeout so requests don't wait forever
+    const timeout = setTimeout(() => {
+      queueSize--
+      reject(new Error('QUEUE_TIMEOUT'))
+    }, QUEUE_TIMEOUT_MS)
+
+    // Poll for an open slot
+    const interval = setInterval(() => {
+      if (activeCount < MAX_CONCURRENT) {
+        clearInterval(interval)
+        clearTimeout(timeout)
+        queueSize--
+        activeCount++
+        resolve()
+      }
+    }, 50) // Check every 50ms
+  })
+}
+
+function releaseSlot() {
+  activeCount = Math.max(0, activeCount - 1)
+}
+// ==========================================
+
 export async function POST(request: Request) {
 
   // 🔧 TESTING: Skip the time gate when testing
@@ -17,6 +70,29 @@ export async function POST(request: Request) {
     }
   }
 
+  // 1. Wait for a slot in the queue
+  try {
+    await acquireSlot()
+  } catch (err: any) {
+    if (err.message === 'SERVER_BUSY') {
+      return NextResponse.json(
+        { success: false, error: 'The server is experiencing very high traffic. Please wait a moment and try again.' },
+        { status: 503 }
+      )
+    }
+    if (err.message === 'QUEUE_TIMEOUT') {
+      return NextResponse.json(
+        { success: false, error: 'Your request timed out due to high traffic. Please try again.' },
+        { status: 504 }
+      )
+    }
+    return NextResponse.json(
+      { success: false, error: 'An unexpected error occurred.' },
+      { status: 500 }
+    )
+  }
+
+  // 2. Process the request (guaranteed to have a slot)
   try {
     const { ticketCode } = await request.json()
 
@@ -24,7 +100,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Ticket Code is required.' }, { status: 400 })
     }
 
-    // 1. Find the attendee by Ticket Code using Admin key
+    // Find the attendee by Ticket Code using Admin key
     const { data: attendee, error: fetchError } = await supabaseAdmin
       .from('attendees')
       .select('id, attendee_name, arabic_name, tt_ticket_id, checked_in_at')
@@ -38,7 +114,7 @@ export async function POST(request: Request) {
       }, { status: 404 })
     }
 
-    // 2. Check if they already did this
+    // Check if they already did this
     if (attendee.checked_in_at) {
       return NextResponse.json({ 
         success: true, 
@@ -47,7 +123,7 @@ export async function POST(request: Request) {
       })
     }
 
-    // 3. Log their official arrival time
+    // Log their official arrival time
     const now = new Date().toISOString()
     const { error: updateError } = await supabaseAdmin
       .from('attendees')
@@ -72,5 +148,8 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('Check-in API Error:', error)
     return NextResponse.json({ success: false, error: error.message || 'Internal server error' }, { status: 500 })
+  } finally {
+    // ⚠️ ALWAYS release the slot, even if the request errored
+    releaseSlot()
   }
 }
