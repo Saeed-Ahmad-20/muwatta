@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabaseAdmin' // Make sure this matches your file name
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(request: Request) {
   try {
@@ -30,12 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "The postcode provided does not match our records for this name." }, { status: 401 })
     }
 
-    // 3. Arrival Check
-    if (!matchedAttendee.checked_in_at) {
-      return NextResponse.json({ success: false, error: "Access Denied: You must complete your Initial Arrival Registration via the 'Check In' tab before you can view your details." }, { status: 403 })
-    }
-
-    // 4. Fetch Attendance Records
+    // 3. Fetch Attendance Records
     const { data: records, error: recordsError } = await supabaseAdmin
       .from('attendance_records')
       .select('*')
