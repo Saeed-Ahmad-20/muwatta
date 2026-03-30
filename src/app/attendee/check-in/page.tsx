@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { getServerTime } from '@/app/actions'
+import { useState, useRef } from 'react'
 
 type CheckedInAttendee = {
   id: number
@@ -11,12 +10,6 @@ type CheckedInAttendee = {
   checked_in_at: string
 }
 
-// ============================================
-// 🔧 TESTING OVERRIDE - Remove for production!
-// ============================================
-const TESTING_MODE = true
-// ============================================
-
 export default function ArrivalCheckIn() {
   const [ticketCode, setTicketCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -24,49 +17,7 @@ export default function ArrivalCheckIn() {
   const [successAttendee, setSuccessAttendee] = useState<CheckedInAttendee | null>(null)
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false)
 
-  // Secure Time States
-  const [isMounted, setIsMounted] = useState(false)
-  const [isLocked, setIsLocked] = useState(!TESTING_MODE) // 🔧 Unlocked in testing mode
-  const [timeOffset, setTimeOffset] = useState<number | null>(null)
-
   const inputRef = useRef<HTMLInputElement>(null)
-
-  // 1. Synchronize the secure clock on load
-  useEffect(() => {
-    setIsMounted(true)
-    async function syncClock() {
-      try {
-        const clientTime = Date.now()
-        const serverIso = await getServerTime()
-        const serverTime = new Date(serverIso).getTime()
-        setTimeOffset(serverTime - clientTime)
-      } catch (e) {
-        setTimeOffset(0)
-      }
-    }
-    syncClock()
-  }, [])
-
-  // 2. Continuously monitor the SECURE time
-  useEffect(() => {
-    if (!isMounted || timeOffset === null) return
-
-    // 🔧 TESTING: Skip the time gate entirely
-    if (TESTING_MODE) {
-      setIsLocked(false)
-      return
-    }
-
-    const checkTime = () => {
-      const actualNow = new Date(Date.now() + timeOffset)
-      const unlockTime = new Date('2026-04-03T17:00:00+01:00')
-      setIsLocked(actualNow < unlockTime)
-    }
-
-    checkTime()
-    const interval = setInterval(checkTime, 10000)
-    return () => clearInterval(interval)
-  }, [isMounted, timeOffset])
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,33 +58,6 @@ export default function ArrivalCheckIn() {
     setError('')
     setTicketCode('')
     setAlreadyCheckedIn(false)
-  }
-
-  // Show a loader while we sync the clock
-  if (!isMounted || timeOffset === null) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-8 h-8 border-4 border-gray-200 border-t-brand-burgundy rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-gray-500 font-medium">Synchronizing secure clock...</p>
-      </div>
-    )
-  }
-
-  // Lock Screen UI
-  if (isLocked) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-8 text-center">
-        <div className="w-20 h-20 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
-        <h1 className="text-3xl font-bold text-brand-burgundy mb-2">Check-in Not Open</h1>
-        <p className="text-gray-600 max-w-md mx-auto">
-          Initial event arrival check-in will open on Friday, April 3rd, 2026 at 5:00 PM. Please check back then.
-        </p>
-      </div>
-    )
   }
 
   // --- MAIN FORM ---
