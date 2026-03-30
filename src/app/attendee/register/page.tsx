@@ -10,6 +10,13 @@ const EVENT_DATES = [
   { id: '2026-04-07', label: 'Tuesday, April 7th' },
 ]
 
+// ============================================
+// 🔧 TESTING OVERRIDE - Remove for production!
+// ============================================
+const TESTING_MODE = true
+const FAKE_NOW = new Date('2026-04-06T11:00:00+01:00') // April 6, 11:00 AM BST
+// ============================================
+
 export default function RegisterAttendance() {
   const [isMounted, setIsMounted] = useState(false)
   const [idNumber, setIdNumber] = useState('')
@@ -50,7 +57,10 @@ export default function RegisterAttendance() {
     if (!isMounted || timeOffset === null) return 
 
     const checkTimeAndDates = () => {
-      const actualNow = new Date(Date.now() + timeOffset) 
+      // 🔧 TESTING: Use fake time instead of real time
+      const actualNow = TESTING_MODE
+        ? FAKE_NOW
+        : new Date(Date.now() + timeOffset)
       
       const formatter = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Europe/London',
@@ -129,10 +139,10 @@ export default function RegisterAttendance() {
         throw new Error("Please enter both your ID Number and a Postcode.")
       }
 
-      const isRetroactive = selectedDate < todayString
-
       // ==========================================
-      // SECURE API CALL (Bypasses RLS Safely)
+      // 🔒 isRetroactive is NO LONGER sent to the server.
+      //    The server calculates it securely based on
+      //    its own clock. We use it from the response.
       // ==========================================
       const response = await fetch('/api/attendee/register', {
         method: 'POST',
@@ -141,8 +151,7 @@ export default function RegisterAttendance() {
           idNumber,
           postcode,
           selectedDate,
-          selectedSessions,
-          isRetroactive
+          selectedSessions
         })
       })
 
@@ -154,13 +163,13 @@ export default function RegisterAttendance() {
 
       const selectedDateLabel = EVENT_DATES.find(d => d.id === selectedDate)?.label
 
-      // Update UI matching the exact data shape the API returned
+      // 🔒 Use the SERVER's isRetroactive — not our own calculation
       setSuccessData({
         ...result.attendee,
         registered_date: selectedDateLabel,
         newly_registered: { am: result.newAm, pm: result.newPm },
         already_registered: { am: result.dupAm, pm: result.dupPm },
-        isRetroactive
+        isRetroactive: result.isRetroactive
       })
 
     } catch (err: any) {

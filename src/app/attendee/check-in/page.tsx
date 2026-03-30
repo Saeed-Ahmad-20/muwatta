@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { getServerTime } from '@/app/actions' // <-- Imported your secure time action
+import { getServerTime } from '@/app/actions'
 
 type CheckedInAttendee = {
   id: number
@@ -10,6 +10,12 @@ type CheckedInAttendee = {
   tt_ticket_id: string
   checked_in_at: string
 }
+
+// ============================================
+// 🔧 TESTING OVERRIDE - Remove for production!
+// ============================================
+const TESTING_MODE = true
+// ============================================
 
 export default function ArrivalCheckIn() {
   const [ticketCode, setTicketCode] = useState('')
@@ -20,7 +26,7 @@ export default function ArrivalCheckIn() {
 
   // Secure Time States
   const [isMounted, setIsMounted] = useState(false)
-  const [isLocked, setIsLocked] = useState(true)
+  const [isLocked, setIsLocked] = useState(!TESTING_MODE) // 🔧 Unlocked in testing mode
   const [timeOffset, setTimeOffset] = useState<number | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
@@ -33,9 +39,9 @@ export default function ArrivalCheckIn() {
         const clientTime = Date.now()
         const serverIso = await getServerTime()
         const serverTime = new Date(serverIso).getTime()
-        setTimeOffset(serverTime - clientTime) // The difference between their phone and reality
+        setTimeOffset(serverTime - clientTime)
       } catch (e) {
-        setTimeOffset(0) // Fallback
+        setTimeOffset(0)
       }
     }
     syncClock()
@@ -43,18 +49,22 @@ export default function ArrivalCheckIn() {
 
   // 2. Continuously monitor the SECURE time
   useEffect(() => {
-    if (!isMounted || timeOffset === null) return 
+    if (!isMounted || timeOffset === null) return
+
+    // 🔧 TESTING: Skip the time gate entirely
+    if (TESTING_MODE) {
+      setIsLocked(false)
+      return
+    }
 
     const checkTime = () => {
-      // Apply the offset so changing phone time does nothing
-      const actualNow = new Date(Date.now() + timeOffset) 
-      const unlockTime = new Date('2026-04-03T17:00:00+01:00') // April 3, 5:00 PM BST
-      
+      const actualNow = new Date(Date.now() + timeOffset)
+      const unlockTime = new Date('2026-04-03T17:00:00+01:00')
       setIsLocked(actualNow < unlockTime)
     }
 
     checkTime()
-    const interval = setInterval(checkTime, 10000) 
+    const interval = setInterval(checkTime, 10000)
     return () => clearInterval(interval)
   }, [isMounted, timeOffset])
 
