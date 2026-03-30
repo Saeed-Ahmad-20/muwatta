@@ -64,8 +64,6 @@ export default function NavigationShell({
     }
   }, [isMobileMenuOpen])
 
-<<<<<<< Updated upstream
-=======
   // 🔒 Restore lockout state from localStorage on mount
   useEffect(() => {
     try {
@@ -106,7 +104,6 @@ export default function NavigationShell({
     return () => clearInterval(interval)
   }, [lockedUntil])
 
->>>>>>> Stashed changes
   const openAdminLogin = () => {
     if (!isAuthenticated) {
       setIsModalOpen(true)
@@ -116,16 +113,6 @@ export default function NavigationShell({
   const handleTitleTap = () => {
     const now = Date.now()
     const DOUBLE_TAP_DELAY = 400
-<<<<<<< Updated upstream
-
-    if (now - lastTitleTapRef.current < DOUBLE_TAP_DELAY) {
-      openAdminLogin()
-    }
-
-    lastTitleTapRef.current = now
-  }
-
-=======
     if (now - lastTitleTapRef.current < DOUBLE_TAP_DELAY) {
       openAdminLogin()
     }
@@ -134,7 +121,6 @@ export default function NavigationShell({
 
   const isLockedOut = lockedUntil !== null && Date.now() < lockedUntil
 
->>>>>>> Stashed changes
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
