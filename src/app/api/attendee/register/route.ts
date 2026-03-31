@@ -105,11 +105,6 @@ export async function POST(request: Request) {
     const serverToday = getServerTodayString()
     const isRetroactive = selectedDate < serverToday
 
-    // 🔒 Reject future dates entirely — no one can log attendance for a day that hasn't happened
-    if (selectedDate > serverToday) {
-      return NextResponse.json({ success: false, error: 'You cannot log attendance for a future date.' }, { status: 400 })
-    }
-
     // Verify Attendee Exists (Bypass RLS)
     const { data: attendee, error: dbError } = await supabaseAdmin
       .from('attendees')
