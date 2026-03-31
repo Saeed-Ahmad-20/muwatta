@@ -360,7 +360,7 @@ export default function RegisterAttendance() {
                     )}
                   </button>
 
-                  {typeof navigator !== 'undefined' && navigator.share && (
+                  {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
                     <button
                       onClick={handleNativeShare}
                       className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-brand-burgundy text-brand-gold rounded-lg font-bold text-xs hover:bg-brand-burgundy-dark transition-colors shadow-sm"
