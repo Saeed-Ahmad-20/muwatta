@@ -66,7 +66,7 @@ export default function ArrivalCheckIn() {
       <div className={`w-full ${successAttendee ? 'max-w-2xl' : 'max-w-md'} bg-gray-50 rounded-xl shadow-md border-2 border-brand-burgundy overflow-hidden transition-all duration-300 relative`}>
         
         <div className="bg-brand-burgundy p-6 text-center text-brand-gold">
-          <h1 className="text-2xl font-bold">Event Arrival</h1>
+          <h1 className="text-2xl font-bold">Check-In</h1>
           <p className="text-sm text-brand-gold-light mt-2">Log your official arrival and receive your ID Number</p>
         </div>
 

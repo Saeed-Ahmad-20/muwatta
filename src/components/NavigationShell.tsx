@@ -197,7 +197,7 @@ export default function NavigationShell({
   ]
 
   const attendeeLinks = [
-    { name: 'Event Arrival', href: '/attendee/check-in' }, 
+    { name: 'Check-In', href: '/attendee/check-in' }, 
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
   ]
