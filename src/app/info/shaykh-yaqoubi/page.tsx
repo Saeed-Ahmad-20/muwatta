@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export default function ShaykhYaqoubiInfo() {
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50 py-12 px-4 md:px-8 flex justify-center">
@@ -8,6 +10,19 @@ export default function ShaykhYaqoubiInfo() {
           <h1 className="text-5xl md:text-6xl font-black mb-4" dir="rtl">الشيخ محمد اليعقوبي</h1>
           <h2 className="text-3xl font-bold tracking-widest uppercase">Shaykh Muhammad Al-Yaqoubi</h2>
           <p className="text-brand-gold-light mt-3 text-lg font-medium tracking-wide">Scholar, Theologian, and Master of Hadith</p>
+          
+          {/* Linktree / Socials */}
+          <a
+            href="https://linktr.ee/shaykhalyaqoubi"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 mt-5 px-6 py-2.5 bg-brand-gold text-brand-burgundy rounded-full font-bold text-sm hover:bg-white transition-colors shadow-md"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M13.5108 5.85343L17.5158 1.73642L19.8404 4.11701L15.6393 8.12199H21.5488V11.4268H15.6113L19.8404 15.5765L17.5158 17.9571L12.2817 12.5769L7.04754 17.9571L4.72299 15.5765L8.95208 11.4268H3.01465V8.12199H8.92413L4.72299 4.11701L7.04754 1.73642L11.0525 5.85343V0H13.5108V5.85343ZM11.0525 16.7098V24H13.5108V16.7098H11.0525Z"/>
+            </svg>
+            Follow Shaykh Al-Yaqoubi
+          </a>
         </div>
 
         {/* Content */}
@@ -66,8 +81,8 @@ export default function ShaykhYaqoubiInfo() {
               </li>
             </ul>
           </section>
-          
-          {/* Restored the original "honor of having the shaykh" section */}
+
+          {/* The Recital section */}
           <div className="bg-brand-burgundy text-brand-gold p-8 rounded-xl mt-8 text-center shadow-md border-2 border-brand-gold">
             <h4 className="text-xl font-bold mb-3">The Recital</h4>
             <p className="font-medium text-brand-gold-light leading-relaxed">
@@ -75,7 +90,7 @@ export default function ShaykhYaqoubiInfo() {
             </p>
           </div>
 
-          {/* Kept the tags from the improved version */}
+          {/* Tags */}
           <div className="pt-6">
             <div className="flex flex-wrap gap-2 justify-center">
               <span className="px-3 py-1 bg-brand-burgundy/10 text-brand-burgundy rounded-full text-sm font-medium">Descendant of Prophet ﷺ</span>
