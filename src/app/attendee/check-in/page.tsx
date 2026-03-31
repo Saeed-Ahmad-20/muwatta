@@ -67,7 +67,7 @@ export default function ArrivalCheckIn() {
         
         <div className="bg-brand-burgundy p-6 text-center text-brand-gold">
           <h1 className="text-2xl font-bold">Check-In</h1>
-          <p className="text-sm text-brand-gold-light mt-2">Log your official arrival and receive your ID Number</p>
+          <p className="text-sm text-brand-gold-light mt-2">Log your official arrival using your Ticket Tailor code from your confirmation email and receive your ID Number</p>
         </div>
 
         <div className="p-6 md:p-8">
