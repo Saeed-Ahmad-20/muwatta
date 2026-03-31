@@ -220,7 +220,7 @@ export default function NavigationShell({
       '/info/imam-malik': 'Imam Malik',
       '/info/shaykh-yaqoubi': 'Shaykh Al-Yaqoubi',
       '/info/guidance-hub': 'Guidance Hub',
-      '/attendee/check-in': 'Event Arrival',
+      '/attendee/check-in': 'Check-In',
       '/attendee/register': 'Register Attendance',
       '/attendee/my-details': 'My Details',
       '/admin/statistics': 'Dashboard & Statistics',

@@ -129,9 +129,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "The postcode provided does not match our records for this ID Number." }, { status: 401 })
     }
 
-    // Security Gate: Event Arrival Check
+    // Security Gate: Check-In Check
     if (!attendee.checked_in_at) {
-      return NextResponse.json({ success: false, error: "Access Denied: You must complete your Initial Arrival check-in at the 'Event Arrival' tab before you can log daily sessions." }, { status: 403 })
+      return NextResponse.json({ success: false, error: "Access Denied: You must complete your Initial Arrival check-in at the 'Check-In' tab before you can log daily sessions." }, { status: 403 })
     }
 
     // 🔒 Route to the correct table based on SERVER-calculated retroactive status
