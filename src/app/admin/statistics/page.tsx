@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps"
 
-const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-50m.json"
+const geoUrl = "/world.geojson"
 
 const MICRO_STATES: Record<string, [number, number]> = {
   'Singapore': [103.8198, 1.3521],
@@ -45,9 +45,8 @@ function WorldMap({
   countryBreakdown: Record<string, number>
   countryCityBreakdown: Record<string, Record<string, number>>
 }) {
-  // Map State for Panning (X, Y) and Zoom (Scale)
   const [center, setCenter] = useState<[number, number]>([0, 20])
-  const [scale, setScale] = useState(130) // Base scale for Mercator
+  const [scale, setScale] = useState(130)
   
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState([0, 0])
@@ -63,14 +62,12 @@ function WorldMap({
     }
   }, [countryBreakdown])
 
-  // Scroll lock for zoom
   useEffect(() => {
     const element = mapContainerRef.current
     if (!element) return
 
     const handleNativeWheel = (e: WheelEvent) => {
       e.preventDefault() 
-      // Zoom limits for Mercator projection
       setScale(prev => Math.min(Math.max(prev - e.deltaY * 0.5, 100), 800))
     }
 
@@ -78,13 +75,11 @@ function WorldMap({
     return () => element.removeEventListener('wheel', handleNativeWheel)
   }, [])
 
-  // --- PANNING LOGIC ---
   const handleDrag = (clientX: number, clientY: number) => {
     if (isDragging) {
       const dx = clientX - dragStart[0]
       const dy = clientY - dragStart[1]
       
-      // Calculate how much to pan based on the current zoom scale
       const panFactor = 100 / scale
       setCenter(prev => [
         Math.max(-180, Math.min(180, prev[0] - dx * panFactor)),
@@ -154,7 +149,7 @@ function WorldMap({
   }
 
   const getColor = (count: number) => {
-    if (count === 0) return "#E2E8F0" // <-- Darkened from #F3F4F6 to stand out from the ocean
+    if (count === 0) return "#E2E8F0"
     if (count <= 2) return "#eab3b3"  
     if (count <= 10) return "#c76464" 
     if (count <= 50) return "#a62d2d" 
@@ -186,8 +181,8 @@ function WorldMap({
         onTouchEnd={handleInteractionEnd}
       >
         <ComposableMap 
-          projection="geoMercator" // Changed to 2D Mercator
-          projectionConfig={{ center: center, scale: scale }} // Uses pan center instead of rotation
+          projection="geoMercator"
+          projectionConfig={{ center: center, scale: scale }}
           width={800} 
           height={400}
           style={{ width: "100%", height: "100%" }}
@@ -285,7 +280,6 @@ function WorldMap({
       </div>
       
       <div className="flex justify-center items-center gap-4 mt-6 text-xs font-bold text-gray-500 flex-wrap">
-        {/* Updated the background color for the '0' indicator to match the map */}
         <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#E2E8F0] mr-2 border border-gray-300"></span>0</div>
         <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#eab3b3] mr-2"></span>1 - 2</div>
         <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#c76464] mr-2"></span>3 - 10</div>
