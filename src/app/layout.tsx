@@ -10,7 +10,33 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Muwatta Hadith Recital 2026',
-  description: 'Muwatta Hadith Recital Portal',
+  description: 'Join us for a monumental 4-day Majlis reading the entire Al-Muwatta of Imam Malik with Shaykh Muhammad Al-Yaqoubi at Ashton Central Mosque.',
+  
+  // OPEN GRAPH META TAGS (For WhatsApp, iMessage, Facebook, LinkedIn)
+  openGraph: {
+    title: 'Muwatta Hadith Recital 2026',
+    description: 'Join us for a monumental 4-day Majlis reading the entire Al-Muwatta of Imam Malik with Shaykh Muhammad Al-Yaqoubi.',
+    url: 'https://muwatta.co.uk/', // ⚠️ TODO: Replace with your actual live domain!
+    siteName: 'Muwatta Recital',
+    images: [
+      {
+        url: '/images/muwatta-recital.png', // Path to the image file in your public folder
+        width: 1200,
+        height: 630,
+        alt: 'Muwatta Hadith Recital 2026 Event Banner',
+      },
+    ],
+    locale: 'en_GB',
+    type: 'website',
+  },
+  
+  // TWITTER META TAGS (For Twitter/X specifically)
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Muwatta Hadith Recital 2026',
+    description: 'Join us for a monumental 4-day Majlis reading the entire Al-Muwatta of Imam Malik.',
+    images: ['/images/muwatta-recital.png'], // Same image path
+  },
 }
 
 export default async function RootLayout({

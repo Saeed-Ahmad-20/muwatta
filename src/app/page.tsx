@@ -43,23 +43,39 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Ticket Purchase Link */}
-          <div className="pt-4">
+          {/* Secondary Links (Tickets & Socials) - UPGRADED */}
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href="https://www.tickettailor.com/events/guidancehub/2031287"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-brand-gold-light hover:text-white transition-colors text-sm font-medium group"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-brand-gold/40 rounded-xl text-white font-bold transition-all shadow-lg hover:shadow-xl backdrop-blur-sm transform hover:-translate-y-1 w-full sm:w-auto group"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
               </svg>
-              Don't have a ticket yet? Purchase one here
-              <svg className="w-3 h-3 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              Purchase a Ticket
+              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+
+            <a
+              href="https://linktr.ee/shaykhalyaqoubi"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-brand-gold/40 rounded-xl text-white font-bold transition-all shadow-lg hover:shadow-xl backdrop-blur-sm transform hover:-translate-y-1 w-full sm:w-auto group"
+            >
+              <svg className="w-5 h-5 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              Follow the Shaykh
+              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </a>
           </div>
+
         </div>
       </div>
 
