@@ -6,39 +6,41 @@ import { usePathname } from 'next/navigation'
 import { loginAction, logoutAction } from '@/app/actions'
 
 // ==========================================
-// 🔒 BRUTE FORCE PROTECTION CONFIG
+// 🔒 CLIENT-SIDE BRUTE FORCE UX
+//    Convenience layer only — real enforcement
+//    is server-side in actions.ts
 // ==========================================
-const MAX_ATTEMPTS = 5            // Lock after this many failed tries
-const LOCKOUT_DURATION_MS = 300000 // 5 minute lockout
-const ATTEMPT_DELAY_MS = 1000     // Base delay between attempts (multiplied by attempt count)
+const MAX_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 300000
+const ATTEMPT_DELAY_MS = 1000
 // ==========================================
 
-export default function NavigationShell({ 
-  isAuthenticated, 
-  children 
-}: { 
+export default function NavigationShell({
+  isAuthenticated,
+  children
+}: {
   isAuthenticated: boolean
-  children: React.ReactNode 
+  children: React.ReactNode
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  
+
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  
+
   const [isEventExpanded, setIsEventExpanded] = useState(true)
   const [isLuminariesExpanded, setIsLuminariesExpanded] = useState(true)
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
 
-  // 🔒 Brute Force Protection State
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState<number | null>(null)
   const [lockCountdown, setLockCountdown] = useState(0)
-  
+
   const pathname = usePathname()
   const lastTitleTapRef = useRef(0)
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
@@ -64,7 +66,7 @@ export default function NavigationShell({
     }
   }, [isMobileMenuOpen])
 
-  // 🔒 Restore lockout state from localStorage on mount
+  // 🔒 Restore lockout from localStorage (UX layer only)
   useEffect(() => {
     try {
       const stored = localStorage.getItem('admin_login_lockout')
@@ -74,14 +76,15 @@ export default function NavigationShell({
           setLockedUntil(until)
           setFailedAttempts(attempts || MAX_ATTEMPTS)
         } else {
-          // Lockout expired — clear it
           localStorage.removeItem('admin_login_lockout')
         }
       }
-    } catch {}
+    } catch {
+      // Ignore localStorage errors
+    }
   }, [])
 
-  // 🔒 Countdown timer for lockout
+  // 🔒 Countdown timer
   useEffect(() => {
     if (!lockedUntil) {
       setLockCountdown(0)
@@ -107,6 +110,7 @@ export default function NavigationShell({
   const openAdminLogin = () => {
     if (!isAuthenticated) {
       setIsModalOpen(true)
+      setError('')
     }
   }
 
@@ -124,7 +128,6 @@ export default function NavigationShell({
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    // 🔒 Block if locked out
     if (isLockedOut) {
       setError(`Too many failed attempts. Please wait ${lockCountdown} seconds.`)
       return
@@ -133,36 +136,52 @@ export default function NavigationShell({
     setLoading(true)
     setError('')
 
-    // 🔒 Progressive delay — the more failures, the longer the wait
+    // 🔒 Progressive delay (UX layer)
     if (failedAttempts > 0) {
       const delay = Math.min(failedAttempts * ATTEMPT_DELAY_MS, 5000)
       await new Promise(resolve => setTimeout(resolve, delay))
     }
-    
+
     const formData = new FormData(e.currentTarget)
     const res = await loginAction(formData)
-    
+
     if (res.success) {
-      // 🔒 Reset on success
       setFailedAttempts(0)
       setLockedUntil(null)
       localStorage.removeItem('admin_login_lockout')
-
+      formRef.current?.reset()
       setIsModalOpen(false)
       window.location.href = '/admin/attendees'
     } else {
-      const newAttempts = failedAttempts + 1
-      setFailedAttempts(newAttempts)
-
-      // 🔒 Lock out after MAX_ATTEMPTS
-      if (newAttempts >= MAX_ATTEMPTS) {
-        const until = Date.now() + LOCKOUT_DURATION_MS
+      // 🔒 Sync with server lockout if returned
+      if ('locked' in res && res.locked && 'retryAfterSeconds' in res && res.retryAfterSeconds) {
+        const until = Date.now() + (res.retryAfterSeconds as number) * 1000
         setLockedUntil(until)
-        localStorage.setItem('admin_login_lockout', JSON.stringify({ until, attempts: newAttempts }))
-        setError(`Too many failed attempts. Login disabled for 5 minutes.`)
+        setFailedAttempts(MAX_ATTEMPTS)
+        localStorage.setItem('admin_login_lockout', JSON.stringify({
+          until,
+          attempts: MAX_ATTEMPTS
+        }))
+        setError(res.error || 'Too many failed attempts.')
       } else {
-        const remaining = MAX_ATTEMPTS - newAttempts
-        setError(`${res.error || 'Login failed'}. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`)
+        const newAttempts = failedAttempts + 1
+        setFailedAttempts(newAttempts)
+
+        if (newAttempts >= MAX_ATTEMPTS) {
+          const until = Date.now() + LOCKOUT_DURATION_MS
+          setLockedUntil(until)
+          localStorage.setItem('admin_login_lockout', JSON.stringify({
+            until,
+            attempts: newAttempts
+          }))
+          setError('Too many failed attempts. Login disabled for 5 minutes.')
+        } else {
+          const remaining = MAX_ATTEMPTS - newAttempts
+          setError(
+            res.error ||
+            `Login failed. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+          )
+        }
       }
 
       setLoading(false)
@@ -176,10 +195,14 @@ export default function NavigationShell({
   }
 
   const publicLinks = [
-    { 
-      name: 'Home', 
+    {
+      name: 'Home',
       href: '/',
-      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
     },
   ]
 
@@ -197,7 +220,7 @@ export default function NavigationShell({
   ]
 
   const attendeeLinks = [
-    { name: 'Check-In', href: '/attendee/check-in' }, 
+    { name: 'Check-In', href: '/attendee/check-in' },
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
   ]
@@ -227,31 +250,32 @@ export default function NavigationShell({
       '/admin/attendees': 'Attendees Database',
       '/admin/approvals': 'Detail Approvals',
       '/admin/attendance-approvals': 'Attendance Approvals',
-      '/admin/ijazah-list': 'Ijazah List'
+      '/admin/ijazah-list': 'Ijazah List',
     }
 
     if (titles[pathname]) return titles[pathname]
-    
     if (pathname.startsWith('/attendee/')) return 'Attendee Portal'
     if (pathname.startsWith('/admin/')) return 'Admin Portal'
     if (pathname.startsWith('/info/')) return 'Event Information'
-    
     return 'Muwatta Event'
   }
 
-  const renderLink = (link: { name: string, href: string, icon?: React.ReactNode }, isNested: boolean = false) => {
+  const renderLink = (
+    link: { name: string; href: string; icon?: React.ReactNode },
+    isNested: boolean = false
+  ) => {
     const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href))
-    
+
     return (
-      <Link 
-        key={link.name} 
+      <Link
+        key={link.name}
         href={link.href}
-        prefetch={false} 
+        prefetch={false}
         onClick={() => setIsMobileMenuOpen(false)}
-        title={isCollapsed ? link.name : ''} 
+        title={isCollapsed ? link.name : ''}
         className={`flex items-center py-3 rounded transition-colors duration-200 
           ${isActive ? 'bg-brand-burgundy-dark text-brand-gold' : 'text-gray-300 hover:bg-brand-burgundy-dark hover:text-brand-gold'} 
-          ${isCollapsed ? 'md:justify-center px-4 md:px-0' : (isNested ? 'pl-8 pr-4' : 'px-4')}
+          ${isCollapsed ? 'md:justify-center px-4 md:px-0' : isNested ? 'pl-8 pr-4' : 'px-4'}
         `}
       >
         <div className={`hidden md:flex justify-center items-center ${!isCollapsed ? 'md:hidden' : ''}`}>
@@ -266,20 +290,21 @@ export default function NavigationShell({
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      
+
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden transition-opacity"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      <aside className={`bg-brand-burgundy text-white flex flex-col fixed h-[100dvh] z-40 transition-all duration-300 ease-in-out 
+      <aside
+        className={`bg-brand-burgundy text-white flex flex-col fixed h-[100dvh] z-40 transition-all duration-300 ease-in-out 
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
         md:translate-x-0 ${isCollapsed ? 'md:w-16' : 'md:w-64'} 
         w-64`}
       >
-        <div 
+        <div
           className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark select-none ${isCollapsed ? 'md:justify-center px-0' : ''}`}
           onDoubleClick={openAdminLogin}
           onTouchEnd={handleTitleTap}
@@ -293,13 +318,13 @@ export default function NavigationShell({
             </svg>
           </div>
         </div>
-        
+
         <nav className="flex-1 px-3 mt-4 overflow-y-auto overflow-x-hidden overscroll-contain pb-20">
-          
           <div className="space-y-2">
             {publicLinks.map(link => renderLink(link, false))}
           </div>
 
+          {/* Event Info */}
           <div className="mt-6 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -320,7 +345,6 @@ export default function NavigationShell({
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isEventExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
-
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isEventExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
                 {eventInfoLinks.map(link => renderLink(link, true))}
@@ -328,6 +352,7 @@ export default function NavigationShell({
             </div>
           </div>
 
+          {/* Luminaries */}
           <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -348,7 +373,6 @@ export default function NavigationShell({
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isLuminariesExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
-
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isLuminariesExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
                 {luminariesLinks.map(link => renderLink(link, true))}
@@ -356,6 +380,7 @@ export default function NavigationShell({
             </div>
           </div>
 
+          {/* Attendee */}
           <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -376,7 +401,6 @@ export default function NavigationShell({
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
-
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAttendeeExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
                 {attendeeLinks.map(link => renderLink(link, true))}
@@ -384,6 +408,7 @@ export default function NavigationShell({
             </div>
           </div>
 
+          {/* Admin */}
           {isAuthenticated && (
             <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
@@ -398,14 +423,13 @@ export default function NavigationShell({
                 className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
               >
                 <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
-                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                 </div>
                 <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
                   <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Admin</span>
                   <svg className={`w-4 h-4 transition-transform duration-300 ${isAdminExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </div>
               </button>
-
               <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAdminExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
                 <div className="space-y-2">
                   {adminLinks.map(link => renderLink(link, true))}
@@ -416,10 +440,10 @@ export default function NavigationShell({
         </nav>
 
         <div className="p-4 border-t border-brand-burgundy-dark hidden md:block bg-brand-burgundy mt-auto">
-          <button 
+          <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="w-full flex items-center justify-center p-2 text-brand-gold hover:text-white hover:bg-brand-burgundy-dark rounded transition-colors duration-200"
-            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             {isCollapsed ? (
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,11 +462,10 @@ export default function NavigationShell({
       </aside>
 
       <div className={`flex flex-col min-h-screen w-full transition-all duration-300 ease-in-out ${isCollapsed ? 'md:pl-16' : 'md:pl-64'}`}>
-        
+
         <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 border-b border-gray-100">
-          
           <div className="flex items-center flex-1">
-            <button 
+            <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="text-brand-burgundy hover:text-brand-burgundy-dark focus:outline-none p-2 -ml-2 md:hidden"
             >
@@ -450,15 +473,15 @@ export default function NavigationShell({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            
-            <h1 
+
+            <h1
               className="ml-2 font-black text-brand-burgundy text-xl select-none md:hidden leading-tight"
               onDoubleClick={openAdminLogin}
               onTouchEnd={handleTitleTap}
             >
               {getPageTitle()}
             </h1>
-            
+
             <h1 className="hidden md:block font-black text-brand-burgundy text-2xl tracking-tight select-none">
               {getPageTitle()}
             </h1>
@@ -466,11 +489,11 @@ export default function NavigationShell({
 
           <div className="flex items-center gap-4">
             {!isAuthenticated ? (
-              <div className="w-8"></div> 
+              <div className="w-8"></div>
             ) : (
               <form action={logoutAction}>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="px-4 py-2 bg-gray-100 text-gray-800 rounded font-medium hover:bg-gray-200 transition text-sm md:text-base shadow-sm border border-gray-200"
                 >
                   Log Out
@@ -480,27 +503,25 @@ export default function NavigationShell({
           </div>
         </header>
 
-        <main className="flex-1 w-full">
-          {children}
-        </main>
+        <main className="flex-1 w-full">{children}</main>
       </div>
 
+      {/* Login Modal */}
       {isModalOpen && !isAuthenticated && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-brand-burgundy text-brand-gold">
               <h2 className="text-xl font-bold">Admin Sign In</h2>
-              <button 
-                onClick={() => { setIsModalOpen(false); setError(''); }}
+              <button
+                onClick={() => { setIsModalOpen(false); setError('') }}
                 className="text-brand-gold hover:text-white text-2xl leading-none transition-colors"
               >
                 &times;
               </button>
             </div>
-            
-            <form onSubmit={handleLogin} className="p-6 space-y-4">
-              
-              {/* 🔒 Lockout Banner */}
+
+            <form ref={formRef} onSubmit={handleLogin} className="p-6 space-y-4">
+
               {isLockedOut && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
                   <div className="flex items-center justify-center mb-2">
@@ -524,26 +545,29 @@ export default function NavigationShell({
 
               <div>
                 <label className="block text-sm font-bold text-brand-burgundy mb-1">Username</label>
-                <input 
-                  type="text" 
-                  name="username" 
-                  required 
+                <input
+                  type="text"
+                  name="username"
+                  required
                   disabled={isLockedOut}
+                  autoComplete="username"
+                  maxLength={200}
                   className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-brand-burgundy mb-1">Password</label>
-                <input 
-                  type="password" 
-                  name="password" 
-                  required 
+                <input
+                  type="password"
+                  name="password"
+                  required
                   disabled={isLockedOut}
+                  autoComplete="current-password"
+                  maxLength={200}
                   className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
               </div>
 
-              {/* 🔒 Attempt Counter */}
               {failedAttempts > 0 && !isLockedOut && (
                 <div className="flex items-center justify-center space-x-1">
                   {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
@@ -557,17 +581,16 @@ export default function NavigationShell({
                 </div>
               )}
 
-              <button 
-                type="submit" 
-                disabled={loading || isLockedOut} 
+              <button
+                type="submit"
+                disabled={loading || isLockedOut}
                 className="w-full py-3 px-4 bg-brand-burgundy text-brand-gold rounded hover:bg-brand-burgundy-dark transition font-bold mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLockedOut 
-                  ? `Locked (${formatCountdown(lockCountdown)})` 
-                  : loading 
-                    ? 'Verifying...' 
-                    : 'Sign In'
-                }
+                {isLockedOut
+                  ? `Locked (${formatCountdown(lockCountdown)})`
+                  : loading
+                    ? 'Verifying...'
+                    : 'Sign In'}
               </button>
             </form>
           </div>
