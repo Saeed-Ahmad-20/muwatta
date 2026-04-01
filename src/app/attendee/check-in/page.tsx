@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { toPng } from 'html-to-image'
 
 type CheckedInAttendee = {
   id: number
   attendee_name: string
   arabic_name: string | null
   tt_ticket_id: string
+  tt_internal_id: string | null 
   checked_in_at: string
 }
 
@@ -18,6 +20,7 @@ export default function ArrivalCheckIn() {
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
+  const passRef = useRef<HTMLDivElement>(null)
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,6 +61,29 @@ export default function ArrivalCheckIn() {
     setError('')
     setTicketCode('')
     setAlreadyCheckedIn(false)
+  }
+
+  // ==========================================
+  // HELPER: Download Pass as Image 
+  // ==========================================
+  const handleDownloadPass = async () => {
+    if (!passRef.current || !successAttendee) return
+    
+    try {
+      const dataUrl = await toPng(passRef.current, {
+        pixelRatio: 3, // High quality for retina mobile screens
+        cacheBust: true,
+      })
+      
+      const link = document.createElement('a')
+      link.href = dataUrl
+      link.download = `Muwatta-Pass-${successAttendee.attendee_name.replace(/\s+/g, '-')}.png`
+      link.click()
+
+    } catch (err) {
+      console.error("Failed to download pass:", err)
+      alert("Something went wrong generating your pass. Please try taking a screenshot instead!")
+    }
   }
 
   // --- MAIN FORM ---
@@ -114,35 +140,68 @@ export default function ArrivalCheckIn() {
                 </div>
               )}
 
-              <div className="flex flex-col items-center text-center bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 border ${alreadyCheckedIn ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+              {/* ========================================== */}
+              {/* DIGITAL PASS (VISIBLE CONTAINER)           */}
+              {/* ========================================== */}
+              <div className="mx-auto w-[350px]">
+                <div 
+                  ref={passRef} 
+                  style={{
+                    backgroundColor: '#630A38', // Matched to --color-brand-burgundy
+                    borderColor: '#DFC063',     // Matched to --color-brand-gold
+                    borderWidth: '4px',
+                    borderStyle: 'solid',
+                  }}
+                  className="w-full rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden"
+                >
+                  {/* Decorative Background */}
+                  <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white opacity-10"></div>
+                  <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-white opacity-10"></div>
+
+                  <div className="text-center relative z-10 border-b pb-4 mb-6" style={{ borderColor: 'rgba(223, 192, 99, 0.3)' }}>
+                    <h2 className="text-sm font-bold tracking-widest uppercase mb-1" style={{ color: '#DFC063' }}>Muwatta Recital 2026</h2>
+                    <p className="text-xs" style={{ color: 'rgba(223, 192, 99, 0.8)' }}>Ashton Central Mosque</p>
+                  </div>
+
+                  <div className="text-center relative z-10 space-y-4">
+                    <div>
+                      <span className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#DFC063' }}>Attendee Name</span>
+                      <p className="text-2xl font-bold text-white">{successAttendee.attendee_name}</p>
+                      {successAttendee.arabic_name && (
+                        <p className="text-lg mt-1" style={{ color: 'rgba(223, 192, 99, 0.8)' }} dir="rtl">{successAttendee.arabic_name}</p>
+                      )}
+                    </div>
+
+                    <div className="bg-black/20 rounded-xl p-4 border border-white/10">
+                      <span className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#DFC063' }}>Daily Attendance ID</span>
+                      <p className="text-5xl font-black text-white tracking-tight">{successAttendee.id}</p>
+                    </div>
+
+                    <div>
+                      <span className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#DFC063' }}>Registration Code</span>
+                      <p className="text-sm font-mono" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>{successAttendee.tt_ticket_id}</p>
+                    </div>
+                  </div>
                 </div>
-                
-                <h2 className="text-2xl font-bold text-brand-burgundy">
-                  Welcome, {successAttendee.attendee_name}!
-                </h2>
-                {successAttendee.arabic_name && (
-                  <p className="text-xl font-bold text-brand-burgundy mt-2" dir="rtl">
-                    {successAttendee.arabic_name}
-                  </p>
-                )}
               </div>
 
-              <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm text-center">
-                <span className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Your Daily Attendance ID</span>
-                <p className="text-6xl md:text-7xl font-black text-brand-burgundy tracking-tight py-2">{successAttendee.id}</p>
-                <div className="mt-4 bg-red-50 text-red-700 p-3 rounded-lg border border-red-100 font-bold text-sm">
-                  ⚠️ Take a screenshot. You will need this ID to log your attendance every morning and afternoon.
-                </div>
-              </div>
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <button
+                  onClick={handleDownloadPass}
+                  className="flex-1 flex items-center justify-center gap-2 py-4 px-4 bg-brand-gold text-brand-burgundy rounded-lg hover:bg-white transition font-bold shadow-md"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Save Pass to Photos
+                </button>
 
-              <button
-                onClick={handleReset}
-                className="w-full py-3 px-4 bg-brand-burgundy text-brand-gold rounded-lg hover:bg-brand-burgundy-dark transition font-bold shadow-sm"
-              >
-                Done
-              </button>
+                <button
+                  onClick={handleReset}
+                  className="flex-1 py-4 px-4 bg-white text-gray-700 border-2 border-gray-200 rounded-lg hover:bg-gray-50 transition font-bold shadow-sm"
+                >
+                  Done
+                </button>
+              </div>
 
             </div>
           )}
