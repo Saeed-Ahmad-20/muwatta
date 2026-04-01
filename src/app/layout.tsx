@@ -12,11 +12,20 @@ export const metadata: Metadata = {
   title: 'Muwatta Hadith Recital 2026',
   description: 'Join us for a monumental 4-day Majlis reading the entire Al-Muwatta of Imam Malik with Shaykh Muhammad Al-Yaqoubi at Ashton Central Mosque.',
   
+  // ==========================================
+  // ADDED: EXPLICIT ICON CONFIGURATION
+  // Make sure icon.png and apple-icon.png are inside your public/ folder
+  // ==========================================
+  icons: {
+    icon: '/icon.png',
+    apple: '/apple-icon.png',
+  },
+
   // OPEN GRAPH META TAGS (For WhatsApp, iMessage, Facebook, LinkedIn)
   openGraph: {
     title: 'Muwatta Hadith Recital 2026',
     description: 'Join us for a monumental 4-day Majlis reading the entire Al-Muwatta of Imam Malik with Shaykh Muhammad Al-Yaqoubi.',
-    url: 'https://muwatta.co.uk/', // ⚠️ TODO: Replace with your actual live domain!
+    url: 'https://muwatta.co.uk/', 
     siteName: 'Muwatta Recital',
     images: [
       {
