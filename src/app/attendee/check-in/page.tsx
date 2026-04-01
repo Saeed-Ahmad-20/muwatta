@@ -116,7 +116,7 @@ export default function ArrivalCheckIn() {
                   value={ticketCode}
                   onChange={(e) => setTicketCode(e.target.value)}
                   placeholder="e.g. TICK-12345"
-                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy focus:bg-white transition-colors text-center text-2xl font-bold uppercase"
+                  className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy focus:bg-white transition-colors text-center text-2xl font-bold"
                   disabled={loading}
                   autoFocus
                 />

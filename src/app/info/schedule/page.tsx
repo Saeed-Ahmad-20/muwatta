@@ -10,8 +10,8 @@ const EVENT_DAYS = [
     title: 'Day 1',
     subtitle: 'Saturday, April 4th',
     maghribTime: '7:51 PM', 
-    lunchFood: 'TBC',
-    dinnerFood: 'TBC',
+    lunchFood: 'Sandwich Selection',
+    dinnerFood: 'Chicken and Potato Biryani',
     isKhatam: false
   },
   {
@@ -20,8 +20,8 @@ const EVENT_DAYS = [
     title: 'Day 2',
     subtitle: 'Sunday, April 5th',
     maghribTime: '7:53 PM',
-    lunchFood: 'TBC',
-    dinnerFood: 'TBC',
+    lunchFood: 'Chicken Soup',
+    dinnerFood: 'Mixed Vegetable and Chicken Haka Noodles',
     isKhatam: false
   },
   {
@@ -30,8 +30,8 @@ const EVENT_DAYS = [
     title: 'Day 3',
     subtitle: 'Monday, April 6th',
     maghribTime: '7:55 PM',
-    lunchFood: 'TBC',
-    dinnerFood: 'TBC',
+    lunchFood: 'Keema Pasta',
+    dinnerFood: 'Chicken Shawarma with Steamed Rice',
     isKhatam: false
   },
   {
@@ -40,8 +40,7 @@ const EVENT_DAYS = [
     title: 'Day 4 (Khatam)',
     subtitle: 'Tuesday, April 7th',
     maghribTime: '7:56 PM',
-    lunchFood: 'TBC',
-    dinnerFood: 'TBC',
+    lunchFood: 'Sandwich Selection',
     isKhatam: true 
   }
 ]

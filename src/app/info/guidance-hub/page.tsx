@@ -4,10 +4,23 @@ export default function GuidanceHubInfo() {
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-md border-2 border-brand-burgundy overflow-hidden">
         
         {/* Header */}
-        <div className="bg-brand-burgundy p-8 md:p-12 text-center text-brand-gold border-b-4 border-brand-gold">
+        <div className="bg-brand-burgundy p-8 md:p-12 text-center text-brand-gold border-b-4 border-brand-gold flex flex-col items-center">
           <h1 className="text-4xl md:text-5xl font-black mb-4 uppercase tracking-widest">Guidance Hub</h1>
           <h2 className="text-xl font-bold tracking-wide">Community, Education, and Spirituality</h2>
           <p className="text-brand-gold-light mt-3 text-sm font-medium tracking-wide">The Proud Organizers of the Muwatta' Recital</p>
+          
+          {/* Linktree / Socials */}
+          <a
+            href="https://linktr.ee/guidancehub" 
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 mt-6 px-6 py-2.5 bg-brand-gold text-brand-burgundy rounded-full font-bold text-sm hover:bg-white transition-colors shadow-md"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M13.5108 5.85343L17.5158 1.73642L19.8404 4.11701L15.6393 8.12199H21.5488V11.4268H15.6113L19.8404 15.5765L17.5158 17.9571L12.2817 12.5769L7.04754 17.9571L4.72299 15.5765L8.95208 11.4268H3.01465V8.12199H8.92413L4.72299 4.11701L7.04754 1.73642L11.0525 5.85343V0H13.5108V5.85343ZM11.0525 16.7098V24H13.5108V16.7098H11.0525Z"/>
+            </svg>
+            Connect with Guidance Hub
+          </a>
         </div>
 
         {/* Content */}

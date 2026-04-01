@@ -44,7 +44,7 @@ export default function Home() {
           </div>
 
           {/* Secondary Links (Tickets & Socials) - UPGRADED */}
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="pt-8 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4">
             <a
               href="https://www.tickettailor.com/events/guidancehub/2031287"
               target="_blank"
@@ -70,6 +70,23 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
               Follow the Shaykh
+              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+
+            {/* NEW: Guidance Hub Linktree */}
+            <a
+              href="https://linktr.ee/guidancehub"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-brand-gold/40 rounded-xl text-white font-bold transition-all shadow-lg hover:shadow-xl backdrop-blur-sm transform hover:-translate-y-1 w-full sm:w-auto group"
+            >
+              {/* Using a building/hub icon */}
+              <svg className="w-5 h-5 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+              Follow Guidance Hub
               <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
