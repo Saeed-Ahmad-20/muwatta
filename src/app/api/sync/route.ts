@@ -146,6 +146,7 @@ export async function POST() {
 
       recordsToInsert.push({
         tt_ticket_id: ticketCode, 
+        tt_internal_id: ticket.id, // <-- ADDED: Saves the internal tc_ ID for Wallet generation
         attendee_name: attendeeName,
         email: email,
         admission_type: ticket.description || ticket.ticket_type || 'General',
@@ -229,4 +230,4 @@ export async function POST() {
     console.error('Sync Error:', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
-} 
+}

@@ -100,10 +100,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Ticket Code is required.' }, { status: 400 })
     }
 
-    // Find the attendee by Ticket Code using Admin key
+    // Find the attendee by Ticket Code using Admin key (ADDED tt_internal_id)
     const { data: attendee, error: fetchError } = await supabaseAdmin
       .from('attendees')
-      .select('id, attendee_name, arabic_name, tt_ticket_id, checked_in_at')
+      .select('id, attendee_name, arabic_name, tt_ticket_id, tt_internal_id, checked_in_at')
       .eq('tt_ticket_id', ticketCode.trim())
       .single()
 
