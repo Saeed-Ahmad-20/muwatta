@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { attendee_name, city, country, arabic_name, admission_type, category } = body
+    const { attendee_name, city, country, arabic_name, admission_type } = body
 
     // Basic validation
     if (!attendee_name || !admission_type) {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const timeSuffix = Date.now().toString().slice(-6)
     const manualTicketId = `MANUAL-${timeSuffix}-${randomSuffix}`
 
-    // 1. Prepare the record for the main attendees table (Notice: No ID is provided here)
+    // 1. Prepare the record for the main attendees table (No ID provided)
     const record = {
       tt_ticket_id: manualTicketId,
       attendee_name: attendee_name.trim(),
@@ -24,8 +24,6 @@ export async function POST(request: Request) {
       country: country?.trim() || null,
       arabic_name: arabic_name?.trim() || null,
       admission_type: admission_type.trim(),
-      // Note: If your database trigger needs the 'category' to generate the ID, uncomment the line below:
-      // category: category 
     }
 
     // ==========================================
@@ -34,7 +32,7 @@ export async function POST(request: Request) {
     const { data: mainData, error: mainError } = await supabaseAdmin
       .from('attendees')
       .insert(record)
-      .select('*') // <-- This pulls back the entire row, including your DB-generated ID
+      .select('*') // <-- Pulls back the row, including your DB-generated ID
       .single()
 
     if (mainError || !mainData) {
@@ -45,7 +43,6 @@ export async function POST(request: Request) {
     // ==========================================
     // 3. Insert into the extra 'manual_attendees' table
     // ==========================================
-    // We construct a new object, explicitly injecting the ID that Supabase just generated
     const backupRecord = {
       id: mainData.id, 
       tt_ticket_id: mainData.tt_ticket_id,
@@ -61,8 +58,6 @@ export async function POST(request: Request) {
       .insert(backupRecord)
 
     if (manualError) {
-      // We log this but don't crash the frontend request, 
-      // since the main registration was successful and the user has their ID.
       console.error("Supabase Backup Insert Error:", manualError)
     }
 

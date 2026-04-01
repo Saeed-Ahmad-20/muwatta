@@ -11,14 +11,13 @@ export default function ManualRegisterForm({ admissionTypes }: ManualRegisterFor
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
-  // Form State
+  // Form State - Notice 'category' is completely gone!
   const [formData, setFormData] = useState({
     attendee_name: '',
     arabic_name: '',
     city: '',
     country: '',
-    admission_type: admissionTypes[0] || 'General',
-    category: 'Male' // Default category for ID generation
+    admission_type: admissionTypes[0] || 'General Admission' 
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -52,14 +51,13 @@ export default function ManualRegisterForm({ admissionTypes }: ManualRegisterFor
 
       setSuccessMsg(`Success! ${result.attendee.attendee_name} was assigned ID: ${result.attendee.id}`)
       
-      // Reset form but keep the admission type and category for quick sequential entry
+      // Reset text fields but keep the admission type for quick sequential entry
       setFormData({
         attendee_name: '',
         arabic_name: '',
         city: '',
         country: '',
         admission_type: formData.admission_type,
-        category: formData.category
       })
 
     } catch (err: any) {
@@ -151,26 +149,8 @@ export default function ManualRegisterForm({ admissionTypes }: ManualRegisterFor
           />
         </div>
 
-        {/* ID Category (Dropdown) */}
-        <div className="border-t border-gray-100 pt-6 mt-2">
-          <label className="block text-sm font-bold text-brand-burgundy mb-2 uppercase tracking-wider">
-            Attendee Category <span className="text-red-500">*</span>
-          </label>
-          <select
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy focus:bg-white transition-colors appearance-none font-medium text-gray-800"
-            disabled={loading}
-          >
-            <option value="Male">Male (1001+)</option>
-            <option value="Female">Female (2001+)</option>
-            <option value="Baby">Baby (3001+)</option>
-          </select>
-        </div>
-
-        {/* Admission Type (Dropdown) */}
-        <div className="border-t border-gray-100 pt-6 mt-2">
+        {/* Single Admission Type Dropdown */}
+        <div className="md:col-span-2 border-t border-gray-100 pt-6 mt-2">
           <label className="block text-sm font-bold text-brand-burgundy mb-2 uppercase tracking-wider">
             Admission Type <span className="text-red-500">*</span>
           </label>
