@@ -109,6 +109,15 @@ export default function ScheduleInfo() {
                   <p className="text-gray-600 text-base leading-relaxed">
                     Because this is the final day of the recital, the timetable will depend on our reading pace over the previous three days. The specific timings for the morning/afternoon sessions and the Khatam (Completion) ceremony will be announced closer to the time.
                   </p>
+                  
+                  {activeDay.lunchFood && (
+                    <div className="mt-6 flex items-center gap-3 bg-orange-50 text-orange-900 border border-orange-200 px-4 py-3 rounded-xl shadow-sm w-fit">
+                      <div>
+                        <span className="block text-xs font-bold text-orange-700 uppercase tracking-wider mb-0.5">Planned Lunch</span>
+                        <span className="font-bold">{activeDay.lunchFood}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 /* THE STANDARD TIMETABLE (DAYS 1-3) */
@@ -148,15 +157,20 @@ export default function ScheduleInfo() {
                     <h4 className="text-xl font-bold text-gray-600">Midday Break</h4>
                     <p className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">1:00 PM – 2:45 PM</p>
                     <ul className="text-base space-y-4 text-gray-600">
-                      <li className="flex flex-col md:flex-row md:items-start md:items-center">
-                        <span className="font-bold text-gray-500 w-24">1:00 PM</span> 
+                      <li className="flex flex-col md:flex-row md:items-start">
+                        <span className="font-bold text-gray-500 w-24 pt-1">1:00 PM</span> 
                         <div className="flex-1 flex flex-col">
-                          <span className="text-gray-500 italic">Lunch Break</span>
-                          <span className="text-xs text-brand-burgundy font-medium mt-1 md:mt-0">Menu: {activeDay.lunchFood}</span>
+                          <span className="text-gray-500 italic mb-2">Lunch Break</span>
+                          <div className="flex items-center gap-3 bg-orange-50 text-orange-900 border border-orange-200 px-4 py-3 rounded-xl shadow-sm w-fit">
+                            <div>
+                              <span className="block text-xs font-bold text-orange-700 uppercase tracking-wider mb-0.5">Menu</span>
+                              <span className="font-bold">{activeDay.lunchFood}</span>
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded w-max mt-1 md:mt-0">45 mins</span>
+                        <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded w-max mt-2 md:mt-0">45 mins</span>
                       </li>
-                      <li className="flex flex-col md:flex-row md:items-center">
+                      <li className="flex flex-col md:flex-row md:items-center mt-2">
                         <span className="font-black text-brand-burgundy w-24">1:45 PM</span> 
                         <span className="flex-1 font-medium text-gray-800">Afternoon Registration</span>
                         <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded w-max mt-1 md:mt-0">15 mins</span>
@@ -207,13 +221,19 @@ export default function ScheduleInfo() {
                         <span className="flex-1 font-bold text-gray-800">Session 2C</span>
                         <span className="text-xs bg-gray-100 text-gray-500 font-bold px-2 py-1 rounded w-max mt-1 md:mt-0">~1 hr 20 mins</span>
                       </li>
+                      
                       <li className="flex flex-col md:flex-row md:items-start pt-4">
-                        <span className="font-black text-brand-burgundy w-24">9:30 PM</span> 
+                        <span className="font-black text-brand-burgundy w-24 pt-1">9:30 PM</span> 
                         <div className="flex-1 flex flex-col">
-                          <span className="font-bold text-gray-800">End of Day — Dinner Served</span>
-                          <span className="text-xs text-brand-burgundy font-medium mt-1">Menu: {activeDay.dinnerFood}</span>
+                          <span className="font-bold text-gray-800 mb-2">End of Day — Dinner Served</span>
+                          <div className="flex items-center gap-3 bg-orange-50 text-orange-900 border border-orange-200 px-4 py-3 rounded-xl shadow-sm w-fit">
+                            <div>
+                              <span className="block text-xs font-bold text-orange-700 uppercase tracking-wider mb-0.5">Menu</span>
+                              <span className="font-bold">{activeDay.dinnerFood}</span>
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-xs bg-brand-gold/20 text-brand-burgundy-dark font-bold px-2 py-1 rounded w-max mt-1 md:mt-0">Alhamdulillah</span>
+                        <span className="text-xs bg-brand-gold/20 text-brand-burgundy-dark font-bold px-2 py-1 rounded w-max mt-2 md:mt-0">Alhamdulillah</span>
                       </li>
                     </ul>
                   </div>
