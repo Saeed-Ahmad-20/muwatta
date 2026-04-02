@@ -5,6 +5,7 @@ import { cookies } from 'next/headers'
 import NavigationShell from '@/components/NavigationShell'
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Analytics } from "@vercel/analytics/next"
+import SupportWidget from '@/components/SupportWidget'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -63,6 +64,10 @@ export default async function RootLayout({
         <NavigationShell isAuthenticated={isAuthenticated}>
           {children}
         </NavigationShell>
+        
+        {/* Added the Global Support Widget here */}
+        <SupportWidget />
+        
         <SpeedInsights />
         <Analytics />
       </body>

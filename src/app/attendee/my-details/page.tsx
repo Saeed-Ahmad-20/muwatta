@@ -381,7 +381,7 @@ export default function MyDetails() {
                   type="text" 
                   value={attendeeName}
                   onChange={(e) => setAttendeeName(e.target.value)}
-                  placeholder="e.g. John Doe"
+                  placeholder="e.g. Ali Ahmad"
                   required 
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy focus:bg-white transition-colors"
                 />
