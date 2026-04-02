@@ -98,19 +98,19 @@ export default function SupportWidget() {
 
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Full Name</label>
-                  <input type="text" name="fullName" required disabled={status === 'loading'} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy transition-colors text-sm" placeholder="John Doe" />
+                  <input type="text" name="fullName" required disabled={status === 'loading'} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy transition-colors text-sm" placeholder="Ali Ahmad" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">Email</label>
-                    <input type="email" name="email" required disabled={status === 'loading'} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy transition-colors text-sm" placeholder="john@example.com" />
+                    <input type="email" name="email" required disabled={status === 'loading'} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy transition-colors text-sm" placeholder="Ali@email.com" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1 uppercase tracking-wider">
                       Phone <span className="text-gray-400 normal-case tracking-normal font-medium text-[10px] ml-0.5">(Inc. Country Code)</span>
                     </label>
-                    <input type="tel" name="phone" required disabled={status === 'loading'} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy transition-colors text-sm" placeholder="+44 7123 456789" />
+                    <input type="tel" name="phone" required disabled={status === 'loading'} className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy transition-colors text-sm" placeholder="+123 456 789" />
                   </div>
                 </div>
 
