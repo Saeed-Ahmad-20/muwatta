@@ -50,7 +50,7 @@ const InputField = ({ label, value, onChange }: { label: string, value: string |
 
 export default function MyDetails() {
   const [attendeeName, setAttendeeName] = useState('')
-  const [postcode, setPostcode] = useState('')
+  const [ticketCode, setTicketCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   
@@ -75,15 +75,15 @@ export default function MyDetails() {
     setIsEditing(false)
 
     try {
-      if (!attendeeName || !postcode) {
-        throw new Error("Please enter both your name and Postcode.")
+      if (!attendeeName || !ticketCode) {
+        throw new Error("Please enter both your name and Ticket Code.")
       }
 
       // Secure API fetch
       const response = await fetch('/api/attendee/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attendeeName, postcode })
+        body: JSON.stringify({ attendeeName, ticketCode })
       })
 
       const result = await response.json()
@@ -255,7 +255,7 @@ export default function MyDetails() {
                     onClick={() => {
                       setSuccessData(null)
                       setAttendeeName('')
-                      setPostcode('')
+                      setTicketCode('')
                       setAttendanceRecords([])
                       setIsEditing(false)
                     }}
@@ -388,12 +388,12 @@ export default function MyDetails() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-brand-burgundy mb-1">Postcode</label>
+                <label className="block text-sm font-bold text-brand-burgundy mb-1">Ticket Code</label>
                 <input 
                   type="text" 
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value)}
-                  placeholder="e.g. M16 9LX"
+                  value={ticketCode}
+                  onChange={(e) => setTicketCode(e.target.value)}
+                  placeholder="e.g. TT-123456"
                   required 
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy focus:bg-white transition-colors"
                 />
@@ -413,4 +413,4 @@ export default function MyDetails() {
       </div>
     </div>
   )
-} 
+}

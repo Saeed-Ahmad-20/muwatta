@@ -3,10 +3,10 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export async function POST(request: Request) {
   try {
-    const { attendeeName, postcode } = await request.json()
+    const { attendeeName, ticketCode } = await request.json()
 
-    if (!attendeeName || !postcode) {
-      return NextResponse.json({ success: false, error: 'Name and postcode are required.' }, { status: 400 })
+    if (!attendeeName || !ticketCode) {
+      return NextResponse.json({ success: false, error: 'Name and ticket code are required.' }, { status: 400 })
     }
 
     // 1. Fetch using the Admin client (bypasses RLS)
@@ -19,15 +19,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "We couldn't find an attendee registered with that exact name. Please check your spelling." }, { status: 404 })
     }
 
-    // 2. Validate Postcode
-    const inputPostcode = postcode.replace(/\s+/g, '').toLowerCase()
+    // 2. Validate Ticket Code
+    const inputTicketCode = ticketCode.trim().toLowerCase()
     const matchedAttendee = attendees.find((a: any) => {
-      const dbPostcode = (a.postal_code || '').replace(/\s+/g, '').toLowerCase()
-      return dbPostcode === inputPostcode
+      const dbTicketCode = (a.tt_ticket_id || '').trim().toLowerCase()
+      return dbTicketCode === inputTicketCode
     })
 
     if (!matchedAttendee) {
-      return NextResponse.json({ success: false, error: "The postcode provided does not match our records for this name." }, { status: 401 })
+      return NextResponse.json({ success: false, error: "The ticket code provided does not match our records for this name." }, { status: 401 })
     }
 
     // 3. Fetch Attendance Records
