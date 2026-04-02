@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 
 export default function AttendanceApprovalsPage() {
   const [requests, setRequests] = useState<any[]>([])
@@ -14,16 +13,32 @@ export default function AttendanceApprovalsPage() {
 
   const fetchRequests = async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('attendance_requests')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-
-    if (error) console.error(error)
-    else setRequests(data || [])
     
-    setLoading(false)
+    try {
+      // Secure API fetch instead of direct Supabase query
+      const response = await fetch('/api/approvals/attendance-approvals')
+
+      // SAFETY CHECK: Did the server return HTML instead of JSON?
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        const textStr = await response.text()
+        console.error("Server returned HTML:", textStr) 
+        throw new Error("API Route not found or returned an HTML page. Check the console for details.")
+      }
+        
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to fetch requests")
+      }
+
+      setRequests(result.data || [])
+    } catch (error: any) {
+      console.error(error)
+      alert("Error loading queue: " + error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleAction = async (requestId: number, action: 'approve' | 'reject') => {
@@ -31,7 +46,7 @@ export default function AttendanceApprovalsPage() {
 
     setProcessingId(requestId)
     try {
-      const res = await fetch('/api/attendance-approvals', {
+      const res = await fetch('/api/approvals/attendance-approvals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestId, action })

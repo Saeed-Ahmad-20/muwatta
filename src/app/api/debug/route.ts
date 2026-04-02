@@ -1,7 +1,18 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
 export async function GET() {
   try {
+    // ==========================================
+    // SECURITY GATEWAY: Block public access
+    // ==========================================
+    const cookieStore = await cookies()
+    const isAuthenticated = cookieStore.has('admin_session')
+    
+    if (!isAuthenticated) {
+      return NextResponse.json({ success: false, error: 'Unauthorized access.' }, { status: 401 })
+    }
+
     const apiKey = process.env.TICKET_TAILOR_API_KEY
     if (!apiKey) {
       return NextResponse.json({ success: false, error: 'Ticket Tailor API key missing from environment variables.' }, { status: 500 })

@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Security headers applied to all responses
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+}
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // 1. Fix Incomplete URLs
-  // If someone navigates to the base folders, automatically route them to the correct sub-page
   if (path === '/admin') {
     return NextResponse.redirect(new URL('/admin/attendees', request.url))
   }
@@ -15,21 +23,25 @@ export function middleware(request: NextRequest) {
 
   // 2. Protect Routes (ONLY lock down the Admin section!)
   const isAdminRoute = path.startsWith('/admin')
-  
-  // CHANGED: Now exactly matches the cookie name from your actions.ts file!
-  const isAuthenticated = request.cookies.has('admin_session') 
+  const isAuthenticated = request.cookies.has('admin_session')
 
   if (isAdminRoute && !isAuthenticated) {
-    // Redirect unauthorized users to the home page where the login modal is located
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  return NextResponse.next()
+  // 3. Apply security headers to all responses
+  const response = NextResponse.next()
+
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value)
+  }
+
+  return response
 }
 
 export const config = {
   matcher: [
-    '/admin/:path*', 
+    '/admin/:path*',
     '/attendee/:path*'
   ],
 }

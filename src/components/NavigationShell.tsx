@@ -1,60 +1,218 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { loginAction, logoutAction } from '@/app/actions'
 
-export default function NavigationShell({ 
-  isAuthenticated, 
-  children 
-}: { 
+// ==========================================
+// 🔒 CLIENT-SIDE BRUTE FORCE UX
+//    Convenience layer only — real enforcement
+//    is server-side in actions.ts
+// ==========================================
+const MAX_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 300000
+const ATTEMPT_DELAY_MS = 1000
+// ==========================================
+
+export default function NavigationShell({
+  isAuthenticated,
+  children
+}: {
   isAuthenticated: boolean
-  children: React.ReactNode 
+  children: React.ReactNode
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  
+
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  
-  // Tab Expand/Collapse States
+
   const [isEventExpanded, setIsEventExpanded] = useState(true)
+  const [isLuminariesExpanded, setIsLuminariesExpanded] = useState(true)
   const [isAttendeeExpanded, setIsAttendeeExpanded] = useState(true)
   const [isAdminExpanded, setIsAdminExpanded] = useState(true)
-  
+
+  const [failedAttempts, setFailedAttempts] = useState(0)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null)
+  const [lockCountdown, setLockCountdown] = useState(0)
+
   const pathname = usePathname()
+  const lastTitleTapRef = useRef(0)
+  const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
   }, [pathname])
 
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
+      document.body.style.position = 'fixed'
+      document.body.style.width = '100%'
+    } else {
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+      document.documentElement.style.overflow = ''
+      document.body.style.position = ''
+      document.body.style.width = ''
+    }
+  }, [isMobileMenuOpen])
+
+  // 🔒 Restore lockout from localStorage (UX layer only)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('admin_login_lockout')
+      if (stored) {
+        const { until, attempts } = JSON.parse(stored)
+        if (until && Date.now() < until) {
+          setLockedUntil(until)
+          setFailedAttempts(attempts || MAX_ATTEMPTS)
+        } else {
+          localStorage.removeItem('admin_login_lockout')
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [])
+
+  // 🔒 Countdown timer
+  useEffect(() => {
+    if (!lockedUntil) {
+      setLockCountdown(0)
+      return
+    }
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000))
+      setLockCountdown(remaining)
+
+      if (remaining <= 0) {
+        setLockedUntil(null)
+        setFailedAttempts(0)
+        localStorage.removeItem('admin_login_lockout')
+      }
+    }
+
+    tick()
+    const interval = setInterval(tick, 1000)
+    return () => clearInterval(interval)
+  }, [lockedUntil])
+
+  const openAdminLogin = () => {
+    if (!isAuthenticated) {
+      setIsModalOpen(true)
+      setError('')
+    }
+  }
+
+  const handleTitleTap = () => {
+    const now = Date.now()
+    const DOUBLE_TAP_DELAY = 400
+    if (now - lastTitleTapRef.current < DOUBLE_TAP_DELAY) {
+      openAdminLogin()
+    }
+    lastTitleTapRef.current = now
+  }
+
+  const isLockedOut = lockedUntil !== null && Date.now() < lockedUntil
+
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    if (isLockedOut) {
+      setError(`Too many failed attempts. Please wait ${lockCountdown} seconds.`)
+      return
+    }
+
     setLoading(true)
     setError('')
-    
+
+    // 🔒 Progressive delay (UX layer)
+    if (failedAttempts > 0) {
+      const delay = Math.min(failedAttempts * ATTEMPT_DELAY_MS, 5000)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+
     const formData = new FormData(e.currentTarget)
     const res = await loginAction(formData)
-    
+
     if (res.success) {
+      setFailedAttempts(0)
+      setLockedUntil(null)
+      localStorage.removeItem('admin_login_lockout')
+      formRef.current?.reset()
       setIsModalOpen(false)
       window.location.href = '/admin/attendees'
     } else {
-      setError(res.error || 'Login failed')
+      // 🔒 Sync with server lockout if returned
+      if ('locked' in res && res.locked && 'retryAfterSeconds' in res && res.retryAfterSeconds) {
+        const until = Date.now() + (res.retryAfterSeconds as number) * 1000
+        setLockedUntil(until)
+        setFailedAttempts(MAX_ATTEMPTS)
+        localStorage.setItem('admin_login_lockout', JSON.stringify({
+          until,
+          attempts: MAX_ATTEMPTS
+        }))
+        setError(res.error || 'Too many failed attempts.')
+      } else {
+        const newAttempts = failedAttempts + 1
+        setFailedAttempts(newAttempts)
+
+        if (newAttempts >= MAX_ATTEMPTS) {
+          const until = Date.now() + LOCKOUT_DURATION_MS
+          setLockedUntil(until)
+          localStorage.setItem('admin_login_lockout', JSON.stringify({
+            until,
+            attempts: newAttempts
+          }))
+          setError('Too many failed attempts. Login disabled for 5 minutes.')
+        } else {
+          const remaining = MAX_ATTEMPTS - newAttempts
+          setError(
+            res.error ||
+            `Login failed. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+          )
+        }
+      }
+
       setLoading(false)
     }
   }
 
+  const formatCountdown = (seconds: number) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m}:${s.toString().padStart(2, '0')}`
+  }
+
   const publicLinks = [
-    { name: 'Home', href: '/' },
+    {
+      name: 'Home',
+      href: '/',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
+    },
   ]
 
-  // ==========================================
-  // UPDATED: THE EVENT LINKS
-  // ==========================================
-  const eventLinks = [
+  const eventInfoLinks = [
+    { name: 'Purpose of the Majlis', href: '/info/purpose' },
+    { name: 'Etiquettes & Adab', href: '/info/etiquettes' },
+    { name: 'Daily Schedule', href: '/info/schedule' },
+  ]
+
+  const luminariesLinks = [
     { name: 'The Muwatta', href: '/info/muwatta' },
     { name: 'Imam Malik', href: '/info/imam-malik' },
     { name: 'Shaykh Al-Yaqoubi', href: '/info/shaykh-yaqoubi' },
@@ -62,35 +220,71 @@ export default function NavigationShell({
   ]
 
   const attendeeLinks = [
-    { name: 'Event Arrival', href: '/attendee/arrival' }, 
+    { name: 'Check-In', href: '/attendee/check-in' },
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
   ]
 
   const adminLinks = [
+    { name: 'Dashboard & Stats', href: '/admin/statistics' },
     { name: 'Attendees DB', href: '/admin/attendees' },
     { name: 'Detail Approvals', href: '/admin/approvals' },
     { name: 'Attendance Approvals', href: '/admin/attendance-approvals' },
+    { name: 'Ijazah List', href: '/admin/ijazah-list' },
+    { name: 'Manual Registration', href: '/admin/manual-register' },
+    { name: 'Table Creator', href: '/admin/table-creator' }, // <-- Added Data Export
   ]
 
-  const renderLink = (link: { name: string, href: string }, isNested: boolean = false) => {
+  const getPageTitle = () => {
+    const titles: Record<string, string> = {
+      '/': 'Home',
+      '/info/purpose': 'Purpose of the Majlis',
+      '/info/etiquettes': 'Etiquettes & Adab',
+      '/info/schedule': 'Daily Schedule',
+      '/info/muwatta': 'The Muwatta',
+      '/info/imam-malik': 'Imam Malik',
+      '/info/shaykh-yaqoubi': 'Shaykh Al-Yaqoubi',
+      '/info/guidance-hub': 'Guidance Hub',
+      '/attendee/check-in': 'Check-In',
+      '/attendee/register': 'Register Attendance',
+      '/attendee/my-details': 'My Details',
+      '/admin/statistics': 'Dashboard & Statistics',
+      '/admin/attendees': 'Attendees Database',
+      '/admin/approvals': 'Detail Approvals',
+      '/admin/attendance-approvals': 'Attendance Approvals',
+      '/admin/ijazah-list': 'Ijazah List',
+      '/admin/manual-register': 'Manual Registration',
+      '/admin/table-creator': 'Table Creator', // <-- Added Title for the new page
+    }
+
+    if (titles[pathname]) return titles[pathname]
+    if (pathname.startsWith('/attendee/')) return 'Attendee Portal'
+    if (pathname.startsWith('/admin/')) return 'Admin Portal'
+    if (pathname.startsWith('/info/')) return 'Event Information'
+    return 'Muwatta Event'
+  }
+
+  const renderLink = (
+    link: { name: string; href: string; icon?: React.ReactNode },
+    isNested: boolean = false
+  ) => {
     const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href))
-    
+
     return (
-      <Link 
-        key={link.name} 
+      <Link
+        key={link.name}
         href={link.href}
-        prefetch={false} 
+        prefetch={false}
         onClick={() => setIsMobileMenuOpen(false)}
-        title={isCollapsed ? link.name : ''} 
+        title={isCollapsed ? link.name : ''}
         className={`flex items-center py-3 rounded transition-colors duration-200 
           ${isActive ? 'bg-brand-burgundy-dark text-brand-gold' : 'text-gray-300 hover:bg-brand-burgundy-dark hover:text-brand-gold'} 
-          ${isCollapsed ? 'md:justify-center px-4 md:px-0' : (isNested ? 'pl-8 pr-4' : 'px-4')}
+          ${isCollapsed ? 'md:justify-center px-4 md:px-0' : isNested ? 'pl-8 pr-4' : 'px-4'}
         `}
       >
-        <span className={`hidden md:block font-bold text-lg leading-none ${!isCollapsed ? 'md:hidden' : ''}`}>
-          {link.name.charAt(0)}
-        </span>
+        <div className={`hidden md:flex justify-center items-center ${!isCollapsed ? 'md:hidden' : ''}`}>
+          {link.icon ? link.icon : <span className="font-bold text-lg leading-none">{link.name.charAt(0)}</span>}
+        </div>
         <span className={`whitespace-nowrap text-sm font-medium ${isCollapsed ? 'md:hidden' : ''}`}>
           {link.name}
         </span>
@@ -100,37 +294,41 @@ export default function NavigationShell({
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      
+
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden transition-opacity"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      <aside className={`bg-brand-burgundy text-white flex flex-col fixed h-full z-40 transition-all duration-300 ease-in-out 
+      <aside
+        className={`bg-brand-burgundy text-white flex flex-col fixed h-[100dvh] z-40 transition-all duration-300 ease-in-out 
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
         md:translate-x-0 ${isCollapsed ? 'md:w-16' : 'md:w-64'} 
         w-64`}
       >
-        <div className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark ${isCollapsed ? 'md:justify-center px-4 md:px-0' : ''}`}>
+        <div
+          className={`p-6 flex items-center h-16 border-b border-brand-burgundy-dark select-none ${isCollapsed ? 'md:justify-center px-0' : ''}`}
+          onDoubleClick={openAdminLogin}
+          onTouchEnd={handleTitleTap}
+        >
           <h2 className={`text-xl font-bold tracking-wider overflow-hidden whitespace-nowrap text-brand-gold ${isCollapsed ? 'md:hidden' : ''}`}>
-            Muwatta
+            Muwatta Recital
           </h2>
-          <h2 className={`hidden font-bold tracking-wider text-brand-gold text-xl ${isCollapsed ? 'md:block' : ''}`}>
-            M
-          </h2>
+          <div className={`hidden text-brand-gold ${isCollapsed ? 'md:block' : ''}`}>
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
         </div>
-        
-        <nav className="flex-1 px-3 mt-4 overflow-y-auto overflow-x-hidden">
-          
+
+        <nav className="flex-1 px-3 mt-4 overflow-y-auto overflow-x-hidden overscroll-contain pb-20">
           <div className="space-y-2">
             {publicLinks.map(link => renderLink(link, false))}
           </div>
 
-          {/* ========================================== */}
-          {/* THE EVENT TAB DROPDOWN                     */}
-          {/* ========================================== */}
+          {/* Event Info */}
           <div className="mt-6 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -141,27 +339,52 @@ export default function NavigationShell({
                   setIsEventExpanded(!isEventExpanded)
                 }
               }}
-              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-4 md:px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
+              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
             >
-              <span className={`hidden md:block font-bold text-lg leading-none text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
-                E
-              </span>
+              <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
               <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
                 <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">The Event</span>
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isEventExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
-
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isEventExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
-                {eventLinks.map(link => renderLink(link, true))}
+                {eventInfoLinks.map(link => renderLink(link, true))}
               </div>
             </div>
           </div>
 
-          {/* ========================================== */}
-          {/* ATTENDEE TAB DROPDOWN                      */}
-          {/* ========================================== */}
+          {/* Luminaries */}
+          <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
+            <button
+              onClick={() => {
+                if (isCollapsed && window.innerWidth >= 768) {
+                  setIsCollapsed(false)
+                  setIsLuminariesExpanded(true)
+                } else {
+                  setIsLuminariesExpanded(!isLuminariesExpanded)
+                }
+              }}
+              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
+            >
+              <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+              </div>
+              <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
+                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Texts & Luminaries</span>
+                <svg className={`w-4 h-4 transition-transform duration-300 ${isLuminariesExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </button>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isLuminariesExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
+              <div className="space-y-2">
+                {luminariesLinks.map(link => renderLink(link, true))}
+              </div>
+            </div>
+          </div>
+
+          {/* Attendee */}
           <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
             <button
               onClick={() => {
@@ -172,17 +395,16 @@ export default function NavigationShell({
                   setIsAttendeeExpanded(!isAttendeeExpanded)
                 }
               }}
-              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-4 md:px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
+              className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
             >
-              <span className={`hidden md:block font-bold text-lg leading-none text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
-                U
-              </span>
+              <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              </div>
               <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
-                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Attendee Portal</span>
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
-
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAttendeeExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
                 {attendeeLinks.map(link => renderLink(link, true))}
@@ -190,9 +412,7 @@ export default function NavigationShell({
             </div>
           </div>
 
-          {/* ========================================== */}
-          {/* ADMIN TAB DROPDOWN                         */}
-          {/* ========================================== */}
+          {/* Admin */}
           {isAuthenticated && (
             <div className="mt-4 pt-4 border-t border-brand-burgundy-dark">
               <button
@@ -204,17 +424,16 @@ export default function NavigationShell({
                     setIsAdminExpanded(!isAdminExpanded)
                   }
                 }}
-                className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-4 md:px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
+                className={`w-full flex items-center py-2 text-gray-300 hover:text-brand-gold transition-colors duration-200 rounded ${isCollapsed ? 'md:justify-center px-0' : 'px-4 hover:bg-brand-burgundy-dark'}`}
               >
-                <span className={`hidden md:block font-bold text-lg leading-none text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
-                  A
-                </span>
+                <div className={`hidden md:flex justify-center items-center text-brand-gold ${!isCollapsed ? 'md:hidden' : ''}`}>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                </div>
                 <div className={`flex items-center justify-between w-full ${isCollapsed ? 'md:hidden' : ''}`}>
                   <span className="text-xs font-semibold uppercase tracking-wider text-brand-gold">Admin</span>
                   <svg className={`w-4 h-4 transition-transform duration-300 ${isAdminExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </div>
               </button>
-
               <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAdminExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
                 <div className="space-y-2">
                   {adminLinks.map(link => renderLink(link, true))}
@@ -224,11 +443,11 @@ export default function NavigationShell({
           )}
         </nav>
 
-        <div className="p-4 border-t border-brand-burgundy-dark hidden md:block">
-          <button 
+        <div className="p-4 border-t border-brand-burgundy-dark hidden md:block bg-brand-burgundy mt-auto">
+          <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="w-full flex items-center justify-center p-2 text-brand-gold hover:text-white hover:bg-brand-burgundy-dark rounded transition-colors duration-200"
-            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             {isCollapsed ? (
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,73 +465,136 @@ export default function NavigationShell({
         </div>
       </aside>
 
-      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isCollapsed ? 'md:ml-16' : 'md:ml-64'}`}>
-        <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between md:justify-end px-4 md:px-8 sticky top-0 z-10">
-          <div className="flex items-center md:hidden">
-            <button 
+      <div className={`flex flex-col min-h-screen w-full transition-all duration-300 ease-in-out ${isCollapsed ? 'md:pl-16' : 'md:pl-64'}`}>
+
+        <header className="w-full bg-white shadow-sm h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-50 border-b border-gray-100">
+          <div className="flex items-center flex-1">
+            <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="text-brand-burgundy hover:text-brand-burgundy-dark focus:outline-none p-2 -ml-2"
+              className="text-brand-burgundy hover:text-brand-burgundy-dark focus:outline-none p-2 -ml-2 md:hidden"
             >
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="ml-2 font-bold text-brand-burgundy text-lg">Muwatta</h1>
+
+            <h1
+              className="ml-2 font-black text-brand-burgundy text-xl select-none md:hidden leading-tight"
+              onDoubleClick={openAdminLogin}
+              onTouchEnd={handleTitleTap}
+            >
+              {getPageTitle()}
+            </h1>
+
+            <h1 className="hidden md:block font-black text-brand-burgundy text-2xl tracking-tight select-none">
+              {getPageTitle()}
+            </h1>
           </div>
 
-          {!isAuthenticated ? (
-            <button 
-              onClick={() => setIsModalOpen(true)} 
-              className="px-6 py-2 bg-brand-burgundy text-brand-gold rounded font-bold hover:bg-brand-burgundy-dark transition text-sm md:text-base"
-            >
-              Login
-            </button>
-          ) : (
-            <form action={logoutAction}>
-              <button 
-                type="submit" 
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded font-medium hover:bg-gray-300 transition text-sm md:text-base"
-              >
-                Log Out
-              </button>
-            </form>
-          )}
+          <div className="flex items-center gap-4">
+            {!isAuthenticated ? (
+              <div className="w-8"></div>
+            ) : (
+              <form action={logoutAction}>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-gray-100 text-gray-800 rounded font-medium hover:bg-gray-200 transition text-sm md:text-base shadow-sm border border-gray-200"
+                >
+                  Log Out
+                </button>
+              </form>
+            )}
+          </div>
         </header>
 
-        <main className="flex-1 w-full overflow-x-hidden">
-          {children}
-        </main>
+        <main className="flex-1 w-full">{children}</main>
       </div>
 
+      {/* Login Modal */}
       {isModalOpen && !isAuthenticated && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-brand-burgundy text-brand-gold">
-              <h2 className="text-xl font-bold">Sign In</h2>
-              <button 
-                onClick={() => { setIsModalOpen(false); setError(''); }}
+              <h2 className="text-xl font-bold">Admin Sign In</h2>
+              <button
+                onClick={() => { setIsModalOpen(false); setError('') }}
                 className="text-brand-gold hover:text-white text-2xl leading-none transition-colors"
               >
                 &times;
               </button>
             </div>
-            
-            <form onSubmit={handleLogin} className="p-6 space-y-4">
-              {error && (
+
+            <form ref={formRef} onSubmit={handleLogin} className="p-6 space-y-4">
+
+              {isLockedOut && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    <svg className="w-5 h-5 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span className="font-bold text-red-700 text-sm">Login Temporarily Disabled</span>
+                  </div>
+                  <p className="text-red-600 text-sm">
+                    Too many failed attempts. Try again in{' '}
+                    <span className="font-black text-lg">{formatCountdown(lockCountdown)}</span>
+                  </p>
+                </div>
+              )}
+
+              {error && !isLockedOut && (
                 <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded text-sm text-center">
                   {error}
                 </div>
               )}
+
               <div>
                 <label className="block text-sm font-bold text-brand-burgundy mb-1">Username</label>
-                <input type="text" name="username" required className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy"/>
+                <input
+                  type="text"
+                  name="username"
+                  required
+                  disabled={isLockedOut}
+                  autoComplete="username"
+                  maxLength={200}
+                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
               </div>
               <div>
                 <label className="block text-sm font-bold text-brand-burgundy mb-1">Password</label>
-                <input type="password" name="password" required className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy"/>
+                <input
+                  type="password"
+                  name="password"
+                  required
+                  disabled={isLockedOut}
+                  autoComplete="current-password"
+                  maxLength={200}
+                  className="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-brand-burgundy disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
               </div>
-              <button type="submit" disabled={loading} className="w-full py-3 px-4 bg-brand-burgundy text-brand-gold rounded hover:bg-brand-burgundy-dark transition font-bold mt-2 disabled:opacity-50">
-                {loading ? 'Verifying...' : 'Sign In'}
+
+              {failedAttempts > 0 && !isLockedOut && (
+                <div className="flex items-center justify-center space-x-1">
+                  {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                        i < failedAttempts ? 'bg-red-500' : 'bg-gray-200'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || isLockedOut}
+                className="w-full py-3 px-4 bg-brand-burgundy text-brand-gold rounded hover:bg-brand-burgundy-dark transition font-bold mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLockedOut
+                  ? `Locked (${formatCountdown(lockCountdown)})`
+                  : loading
+                    ? 'Verifying...'
+                    : 'Sign In'}
               </button>
             </form>
           </div>
