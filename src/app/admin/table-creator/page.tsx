@@ -13,14 +13,38 @@ const ALL_COLUMNS = [
   { id: 'position', label: 'Position' }
 ]
 
+// --- TYPESCRIPT INTERFACES ---
+interface Attendee {
+  id: number
+  name: string
+  arabic_name: string | null
+  admission: string
+  country: string
+  contact: string
+  position: string
+  [key: string]: any // To allow dynamic sorting by string keys
+}
+
+interface SortConfig {
+  key: string
+  direction: 'asc' | 'desc'
+}
+
+interface MultiSelectDropdownProps {
+  label: string
+  options: string[]
+  selected: string[]
+  onChange: (selected: string[]) => void
+}
+
 // --- HELPER COMPONENT: Multi-Select Dropdown ---
-function MultiSelectDropdown({ label, options, selected, onChange }) {
+function MultiSelectDropdown({ label, options, selected, onChange }: MultiSelectDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false)
       }
     }
@@ -28,7 +52,7 @@ function MultiSelectDropdown({ label, options, selected, onChange }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const toggleOption = (option) => {
+  const toggleOption = (option: string) => {
     if (selected.includes(option)) {
       onChange(selected.filter(item => item !== option))
     } else {
@@ -36,12 +60,12 @@ function MultiSelectDropdown({ label, options, selected, onChange }) {
     }
   }
 
-  const handleSelectAll = (e) => {
+  const handleSelectAll = (e: React.MouseEvent) => {
     e.stopPropagation()
     onChange([...options])
   }
 
-  const handleClear = (e) => {
+  const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
     onChange([])
   }
@@ -109,31 +133,31 @@ function MultiSelectDropdown({ label, options, selected, onChange }) {
 }
 
 export default function AdminExportPage() {
-  const [attendees, setAttendees] = useState([])
+  const [attendees, setAttendees] = useState<Attendee[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [fetchError, setFetchError] = useState('')
   
   // Filtering States
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedAdmissions, setSelectedAdmissions] = useState([])
-  const [selectedCountries, setSelectedCountries] = useState([])
-  const [selectedPositions, setSelectedPositions] = useState([])
+  const [selectedAdmissions, setSelectedAdmissions] = useState<string[]>([])
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([])
+  const [selectedPositions, setSelectedPositions] = useState<string[]>([])
   
   // Column Visibility State
-  const [selectedColumns, setSelectedColumns] = useState(ALL_COLUMNS.map(c => c.label))
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(ALL_COLUMNS.map(c => c.label))
 
   // --- MULTI-SORT STATE ---
-  const [sortConfigs, setSortConfigs] = useState([{ key: 'id', direction: 'asc' }])
+  const [sortConfigs, setSortConfigs] = useState<SortConfig[]>([{ key: 'id', direction: 'asc' }])
   const [isMultiSortMode, setIsMultiSortMode] = useState(false)
 
   // Export & Preview States
   const [documentTitle, setDocumentTitle] = useState('Muwatta Recital - Attendee List')
   const [isExporting, setIsExporting] = useState(false)
-  const [previewMode, setPreviewMode] = useState(null) 
-  const [previewContent, setPreviewContent] = useState(null)
+  const [previewMode, setPreviewMode] = useState<'pdf' | 'csv' | null>(null) 
+  const [previewContent, setPreviewContent] = useState<string | null>(null)
   
-  const docRef = useRef(null)
-  const csvRef = useRef(null)
+  const docRef = useRef<jsPDF | null>(null)
+  const csvRef = useRef<string | null>(null)
 
   // --- FETCH DATA FROM API ---
   useEffect(() => {
@@ -151,9 +175,10 @@ export default function AdminExportPage() {
 
         const rawAttendees = result.attendees || []
 
-        const formattedData = rawAttendees.map(att => ({
+        const formattedData: Attendee[] = rawAttendees.map((att: any) => ({
           id: att.id,
           name: att.attendee_name || '-', 
+          arabic_name: att.arabic_name || null,
           admission: att.admission_type || 'General',
           country: att.country || 'Unknown',
           contact: att.mobile_number || '-',
@@ -162,7 +187,7 @@ export default function AdminExportPage() {
 
         setAttendees(formattedData)
 
-      } catch (err) {
+      } catch (err: any) {
         console.error("Fetch Error:", err)
         setFetchError(err.message)
       } finally {
@@ -211,7 +236,7 @@ export default function AdminExportPage() {
     return sortableItems
   }, [filteredAttendees, sortConfigs])
 
-  const requestSort = (key, event) => {
+  const requestSort = (key: string, event: React.MouseEvent) => {
     const isMulti = isMultiSortMode || event.shiftKey || event.ctrlKey || event.metaKey
 
     setSortConfigs(prev => {
@@ -234,13 +259,13 @@ export default function AdminExportPage() {
     })
   }
 
-  const toggleSortDirection = (key) => {
+  const toggleSortDirection = (key: string) => {
     setSortConfigs(prev => prev.map(sc => 
       sc.key === key ? { ...sc, direction: sc.direction === 'asc' ? 'desc' : 'asc' } : sc
     ))
   }
 
-  const removeSort = (key) => {
+  const removeSort = (key: string) => {
     setSortConfigs(prev => {
       const newSorts = prev.filter(sc => sc.key !== key)
       if (newSorts.length === 0) return [{ key: 'id', direction: 'asc' }]
@@ -291,20 +316,19 @@ export default function AdminExportPage() {
     
     setTimeout(() => {
       try {
-        // Using Portrait Mode ('p')
         const doc = new jsPDF('p', 'mm', 'a4')
         const pageWidth = doc.internal.pageSize.getWidth()
 
-        // Title Styling (Larger, Bold, Centered)
         doc.setFont("helvetica", "bold")
-        doc.setFontSize(22) 
+        doc.setFontSize(22)
         doc.setTextColor(99, 10, 56) 
         doc.text(documentTitle || 'Attendee List', pageWidth / 2, 22, { align: 'center' })
 
-        // Metadata Styling (Larger, Centered)
         doc.setFont("helvetica", "normal")
         doc.setFontSize(12)
         doc.setTextColor(100)
+        const dateStr = new Date().toLocaleString()
+        doc.text(`Generated on: ${dateStr} | Total Records: ${sortedAttendees.length}`, pageWidth / 2, 32, { align: 'center' })
 
         const activeCols = ALL_COLUMNS.filter(c => selectedColumns.includes(c.label))
         const tableColumns = activeCols.map(c => c.label)
@@ -313,7 +337,6 @@ export default function AdminExportPage() {
           activeCols.map(col => a[col.id] || '-')
         )
 
-        // Table Styling
         autoTable(doc, {
           startY: 42,
           head: [tableColumns],
@@ -322,13 +345,13 @@ export default function AdminExportPage() {
           headStyles: {
             fillColor: [99, 10, 56],
             textColor: [223, 192, 99],
-            fontStyle: 'bold', // Bold headings
-            fontSize: 12,      // Larger heading text
+            fontStyle: 'bold',
+            fontSize: 12,
           },
           alternateRowStyles: { fillColor: [249, 250, 251] },
           styles: { 
-            fontSize: 10.5,    // Larger body text
-            cellPadding: 5     // More padding for readability
+            fontSize: 10.5, 
+            cellPadding: 5 
           },
         })
 
@@ -352,9 +375,9 @@ export default function AdminExportPage() {
   const handleConfirmDownload = () => {
     const fileName = `${(documentTitle || 'export').replace(/\s+/g, '_').toLowerCase()}.${previewMode}`
     
-    if (previewMode === 'pdf') {
+    if (previewMode === 'pdf' && docRef.current) {
       docRef.current.save(fileName)
-    } else if (previewMode === 'csv') {
+    } else if (previewMode === 'csv' && csvRef.current) {
       const blob = new Blob([csvRef.current], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -392,7 +415,7 @@ export default function AdminExportPage() {
                 <h2 className="text-2xl font-black uppercase tracking-wider">
                   Preview Export: {previewMode.toUpperCase()}
                 </h2>
-                {previewMode === 'pdf' && (
+                {previewMode === 'pdf' && previewContent && (
                   <button 
                     onClick={() => window.open(previewContent, '_blank')}
                     className="text-xs font-bold bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
@@ -412,7 +435,7 @@ export default function AdminExportPage() {
             </div>
 
             <div className="flex-1 bg-gray-100 overflow-hidden relative">
-              {previewMode === 'pdf' ? (
+              {previewMode === 'pdf' && previewContent ? (
                 <embed 
                   src={previewContent} 
                   type="application/pdf"
@@ -613,7 +636,7 @@ export default function AdminExportPage() {
 
                       return (
                         <th 
-                          key={col.key || col.id}
+                          key={col.id}
                           onClick={(e) => requestSort(col.id, e)}
                           className="px-4 py-3 font-bold text-sm uppercase tracking-wider border-r border-gray-300 cursor-pointer hover:bg-gray-200 transition-colors group"
                         >
