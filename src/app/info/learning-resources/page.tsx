@@ -11,8 +11,33 @@ const resources = [
     type: "Primary Text",
     size: "33.9 MB",
     link: "/downloads/muwatta-arabic.pdf" 
+  },
+  {
+    id: 2,
+    title: "دليل السالك إلى موطأ الإمام مالك",
+    description: "The complete Arabic text of the Muwatta which will be recited during the gathering.",
+    type: "Primary Text",
+    size: "4.9 MB",
+    link: "/downloads/دليل السالك إلى موطأ الإمام مالك.pdf" 
+  },
+  {
+    id: 3,
+    title: "التقصي_لما_في_الموطأ_من_حديث_النبى",
+    description: "The complete Arabic text of the Muwatta which will be recited during the gathering.",
+    type: "Primary Text",
+    size: "11.6 MB",
+    link: "/downloads/التقصي_لما_في_الموطأ_من_حديث_النبى.pdf" 
+  },
+  {
+    id: 4,
+    title: "كشف المغطا في فضل الموطا",
+    description: "The complete Arabic text of the Muwatta which will be recited during the gathering.",
+    type: "Primary Text",
+    size: "0.49 MB",
+    link: "/downloads/كشف المغطا في فضل الموطا.pdf" 
   }
 ]
+
 
 export default function LearningResourcesPage() {
   return (
@@ -48,9 +73,6 @@ export default function LearningResourcesPage() {
                 <svg className="w-12 h-12 text-brand-burgundy mb-3 opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                 </svg>
-                <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold bg-brand-burgundy px-2 py-1 rounded-full text-center">
-                  {resource.type}
-                </span>
               </div>
 
               {/* Right Side: Content & Buttons */}
@@ -61,9 +83,6 @@ export default function LearningResourcesPage() {
                       {resource.title}
                     </h3>
                   </div>
-                  <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                    {resource.description}
-                  </p>
                 </div>
                 
                 <div className="flex flex-wrap items-center justify-between mt-auto pt-4 border-t border-gray-100 gap-3">
