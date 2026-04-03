@@ -223,6 +223,7 @@ export default function NavigationShell({
     { name: 'Check-In', href: '/attendee/check-in' },
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
+    { name: 'Fawaat Board', href: '/attendee/fawaat' }, // <-- Added Fawaat Link
   ]
 
   const adminLinks = [
@@ -232,7 +233,7 @@ export default function NavigationShell({
     { name: 'Attendance Approvals', href: '/admin/attendance-approvals' },
     { name: 'Ijazah List', href: '/admin/ijazah-list' },
     { name: 'Manual Registration', href: '/admin/manual-register' },
-    { name: 'Table Creator', href: '/admin/table-creator' }, // <-- Added Data Export
+    { name: 'Table Creator', href: '/admin/table-creator' }, 
   ]
 
   const getPageTitle = () => {
@@ -248,13 +249,14 @@ export default function NavigationShell({
       '/attendee/check-in': 'Check-In',
       '/attendee/register': 'Register Attendance',
       '/attendee/my-details': 'My Details',
+      '/attendee/fawaat': 'Fawaat Noticeboard', // <-- Added Page Title
       '/admin/statistics': 'Dashboard & Statistics',
       '/admin/attendees': 'Attendees Database',
       '/admin/approvals': 'Detail Approvals',
       '/admin/attendance-approvals': 'Attendance Approvals',
       '/admin/ijazah-list': 'Ijazah List',
       '/admin/manual-register': 'Manual Registration',
-      '/admin/table-creator': 'Table Creator', // <-- Added Title for the new page
+      '/admin/table-creator': 'Table Creator', 
     }
 
     if (titles[pathname]) return titles[pathname]
