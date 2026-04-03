@@ -223,7 +223,6 @@ export default function NavigationShell({
     { name: 'Check-In', href: '/attendee/check-in' },
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
-    { name: 'Fawaat Board', href: '/attendee/fawaat' }, // <-- Added Fawaat Link
   ]
 
   const adminLinks = [
@@ -249,7 +248,6 @@ export default function NavigationShell({
       '/attendee/check-in': 'Check-In',
       '/attendee/register': 'Register Attendance',
       '/attendee/my-details': 'My Details',
-      '/attendee/fawaat': 'Fawaat Noticeboard', // <-- Added Page Title
       '/admin/statistics': 'Dashboard & Statistics',
       '/admin/attendees': 'Attendees Database',
       '/admin/approvals': 'Detail Approvals',
