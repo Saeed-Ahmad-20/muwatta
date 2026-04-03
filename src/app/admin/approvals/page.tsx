@@ -50,6 +50,9 @@ export default function ApprovalsPage() {
   const [selections, setSelections] = useState<Record<number, Record<string, boolean>>>({})
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<number | null>(null)
+  
+  // New State for Contact Info Modal
+  const [contactModalAttendee, setContactModalAttendee] = useState<any | null>(null)
 
   useEffect(() => {
     fetchRequests()
@@ -59,7 +62,6 @@ export default function ApprovalsPage() {
     setLoading(true)
     
     try {
-      // Securely fetch from our own API instead of Supabase directly
       const response = await fetch('/api/approvals')
       const result = await response.json()
 
@@ -168,7 +170,53 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 relative">
+      
+      {/* CONTACT INFO MODAL */}
+      {contactModalAttendee && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-brand-burgundy animate-in zoom-in-95 duration-200">
+            <div className="bg-brand-burgundy px-6 py-4 flex justify-between items-center text-brand-gold">
+              <h2 className="text-xl font-bold tracking-wide">Contact Information</h2>
+              <button 
+                onClick={() => setContactModalAttendee(null)}
+                className="text-brand-gold hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4 text-sm text-gray-800">
+              <div>
+                <span className="block text-xs font-bold text-brand-burgundy uppercase mb-1">Name</span>
+                <p className="font-medium bg-gray-50 px-3 py-2 rounded border border-gray-200">{contactModalAttendee.attendee_name || '-'}</p>
+              </div>
+              <div>
+                <span className="block text-xs font-bold text-brand-burgundy uppercase mb-1">Email Address</span>
+                <p className="font-medium bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                  <a href={`mailto:${contactModalAttendee.email}`} className="text-blue-600 hover:underline">{contactModalAttendee.email || '-'}</a>
+                </p>
+              </div>
+              <div>
+                <span className="block text-xs font-bold text-brand-burgundy uppercase mb-1">Mobile Number</span>
+                <p className="font-medium bg-gray-50 px-3 py-2 rounded border border-gray-200">
+                  <a href={`tel:${contactModalAttendee.mobile_number}`} className="text-blue-600 hover:underline">{contactModalAttendee.mobile_number || '-'}</a>
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button 
+                onClick={() => setContactModalAttendee(null)}
+                className="px-6 py-2 bg-brand-burgundy text-brand-gold rounded font-bold hover:bg-brand-burgundy-dark transition shadow-sm"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <h1 className="text-3xl font-bold text-brand-burgundy mb-6">Pending Approvals</h1>
       
       {groupedRequests.length === 0 ? (
@@ -190,7 +238,20 @@ export default function ApprovalsPage() {
                     <h2 className="text-xl font-bold">Update Request for {group.attendee?.attendee_name}</h2>
                     <p className="text-sm font-bold opacity-90">ID: #{group.attendee?.id}</p>
                   </div>
-                  <div className="flex space-x-3 w-full md:w-auto">
+                  
+                  {/* Action Buttons Container */}
+                  <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    
+                    {/* NEW: Contact Info Button */}
+                    <button 
+                      onClick={() => setContactModalAttendee(group.attendee)}
+                      className="flex-1 md:flex-none px-4 py-2 bg-brand-burgundy-dark/50 border border-brand-gold/30 text-white rounded font-bold hover:bg-brand-burgundy-dark transition text-sm flex items-center justify-center whitespace-nowrap"
+                      title="View Contact Details"
+                    >
+                      <svg className="w-4 h-4 mr-2 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                      Contact Info
+                    </button>
+
                     <button 
                       onClick={() => handleProcessGroup(group, true)}
                       disabled={processingId === group.attendee_id}
@@ -198,6 +259,7 @@ export default function ApprovalsPage() {
                     >
                       Reject All
                     </button>
+
                     <button 
                       onClick={() => handleProcessGroup(group, false)}
                       disabled={processingId === group.attendee_id}
@@ -208,6 +270,7 @@ export default function ApprovalsPage() {
                       )}
                       {processingId === group.attendee_id ? 'Processing...' : 'Approve Selected'}
                     </button>
+
                   </div>
                 </div>
                 

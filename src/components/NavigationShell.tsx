@@ -232,7 +232,7 @@ export default function NavigationShell({
     { name: 'Attendance Approvals', href: '/admin/attendance-approvals' },
     { name: 'Ijazah List', href: '/admin/ijazah-list' },
     { name: 'Manual Registration', href: '/admin/manual-register' },
-    { name: 'Table Creator', href: '/admin/table-creator' }, // <-- Added Data Export
+    { name: 'Table Creator', href: '/admin/table-creator' }, 
   ]
 
   const getPageTitle = () => {
@@ -254,7 +254,7 @@ export default function NavigationShell({
       '/admin/attendance-approvals': 'Attendance Approvals',
       '/admin/ijazah-list': 'Ijazah List',
       '/admin/manual-register': 'Manual Registration',
-      '/admin/table-creator': 'Table Creator', // <-- Added Title for the new page
+      '/admin/table-creator': 'Table Creator', 
     }
 
     if (titles[pathname]) return titles[pathname]
