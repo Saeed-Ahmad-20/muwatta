@@ -92,13 +92,14 @@ export default function IjazahList() {
 
   // --- CSV EXPORT ---
   const handleExportCSV = () => {
-    const headers = ['ID', 'English Name', 'Arabic Name', 'Checked In']
+    // Removed 'Checked In' from headers
+    const headers = ['ID', 'English Name', 'Arabic Name']
 
+    // Removed the checked_in_at field from the export rows
     const rows = filteredAttendees.map(a => [
       a.id,
       `"${(a.attendee_name || '').replace(/"/g, '""')}"`,
-      `"${(a.arabic_name || '').replace(/"/g, '""')}"`,
-      `"${a.checked_in_at ? new Date(a.checked_in_at).toLocaleString() : 'N/A'}"`
+      `"${(a.arabic_name || '').replace(/"/g, '""')}"`
     ])
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
@@ -168,13 +169,12 @@ export default function IjazahList() {
       const dateStr = new Date().toLocaleString()
       doc.text(`Generated on: ${dateStr} | Total Records: ${filteredAttendees.length}`, pageWidth / 2, 32, { align: 'center' })
 
-      // Table Data specifically for the Ijazah list
-      const tableColumns = ['ID', 'English Name', 'Arabic Name (Ijazah)', 'Checked In']
+      // Table Data specifically for the Ijazah list (Removed 'Checked In' column)
+      const tableColumns = ['ID', 'English Name', 'Arabic Name (Ijazah)']
       const tableRows = filteredAttendees.map(a => [
         a.id,
         a.attendee_name || '-',
-        a.arabic_name || 'Not Provided',
-        a.checked_in_at ? new Date(a.checked_in_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '-'
+        a.arabic_name || 'Not Provided'
       ])
 
       // 3. Render Table with Column-Specific Fonts
@@ -201,10 +201,6 @@ export default function IjazahList() {
           2: { 
             font: 'Amiri', 
             halign: 'right' 
-          },
-          // Column index 3 is Checked In time
-          3: {
-            halign: 'center'
           }
         }
       })
