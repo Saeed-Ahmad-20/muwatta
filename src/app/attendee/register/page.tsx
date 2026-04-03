@@ -12,7 +12,7 @@ const EVENT_DATES = [
 
 const DEFAULT_SHARE_MESSAGE = `Alhamdulillah, I have just logged my attendance at the historic recital of al-Muwatta' of Imam Malik Ibn Anas with Shaykh Muhammad al-Yaqoubi. May Allah bless this blessed gathering and all those who attend. 📖✨`
 
-const SHARE_HASHTAGS = "Muwatta,ImamMalik,ShaykhYaqoubi,IslamicKnowledge"
+const SHARE_HASHTAGS = "Muwatta2026,HadithRecital2026"
 
 export default function RegisterAttendance() {
   const [isMounted, setIsMounted] = useState(false)

@@ -210,6 +210,7 @@ export default function NavigationShell({
     { name: 'Purpose of the Majlis', href: '/info/purpose' },
     { name: 'Etiquettes & Adab', href: '/info/etiquettes' },
     { name: 'Daily Schedule', href: '/info/schedule' },
+    { name: 'Learning Resources', href: '/info/learning-resources' },
   ]
 
   const luminariesLinks = [
@@ -242,6 +243,7 @@ export default function NavigationShell({
       '/info/purpose': 'Purpose of the Majlis',
       '/info/etiquettes': 'Etiquettes & Adab',
       '/info/schedule': 'Daily Schedule',
+      '/info/learning-resources': 'Learning Resources',
       '/info/muwatta': 'The Muwatta',
       '/info/imam-malik': 'Imam Malik',
       '/info/shaykh-yaqoubi': 'Shaykh Al-Yaqoubi',
