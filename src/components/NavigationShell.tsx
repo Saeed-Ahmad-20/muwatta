@@ -233,7 +233,6 @@ export default function NavigationShell({
     { name: 'Check-In', href: '/attendee/check-in' },
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
-    { name: 'Fawaat Board', href: '/attendee/fawaat' },
   ]
 
   const adminLinks = [
@@ -263,7 +262,6 @@ export default function NavigationShell({
       '/attendee/register': 'Register Attendance',
       '/attendee/my-details': 'My Details',
       '/attendee/fawaat': 'Fawaat Noticeboard',
-      '/admin/statistics': 'Dashboard & Statistics',
       '/admin/attendees': 'Attendees Database',
       '/admin/approvals': 'Detail Approvals',
       '/admin/attendance-approvals': 'Attendance Approvals',
