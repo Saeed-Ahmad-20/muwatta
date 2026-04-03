@@ -204,6 +204,15 @@ export default function NavigationShell({
         </svg>
       ),
     },
+    {
+      name: 'Announcements',
+      href: '/info/announcements',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+      ),
+    },
   ]
 
   const eventInfoLinks = [
@@ -234,11 +243,13 @@ export default function NavigationShell({
     { name: 'Ijazah List', href: '/admin/ijazah-list' },
     { name: 'Manual Registration', href: '/admin/manual-register' },
     { name: 'Table Creator', href: '/admin/table-creator' }, 
+    { name: 'Manage Announcements', href: '/admin/announcements' },
   ]
 
   const getPageTitle = () => {
     const titles: Record<string, string> = {
       '/': 'Home',
+      '/info/announcements': 'Announcements',
       '/info/purpose': 'Purpose of the Majlis',
       '/info/etiquettes': 'Etiquettes & Adab',
       '/info/schedule': 'Daily Schedule',
@@ -250,13 +261,14 @@ export default function NavigationShell({
       '/attendee/check-in': 'Check-In',
       '/attendee/register': 'Register Attendance',
       '/attendee/my-details': 'My Details',
-      '/admin/statistics': 'Dashboard & Statistics',
+      '/attendee/fawaat': 'Fawaat Noticeboard',
       '/admin/attendees': 'Attendees Database',
       '/admin/approvals': 'Detail Approvals',
       '/admin/attendance-approvals': 'Attendance Approvals',
       '/admin/ijazah-list': 'Ijazah List',
       '/admin/manual-register': 'Manual Registration',
       '/admin/table-creator': 'Table Creator', 
+      '/admin/announcements': 'Manage Announcements',
     }
 
     if (titles[pathname]) return titles[pathname]
@@ -351,7 +363,7 @@ export default function NavigationShell({
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isEventExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isEventExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isEventExpanded ? 'max-h-[600px] opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
                 {eventInfoLinks.map(link => renderLink(link, true))}
               </div>
@@ -379,7 +391,7 @@ export default function NavigationShell({
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isLuminariesExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isLuminariesExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isLuminariesExpanded ? 'max-h-[600px] opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
                 {luminariesLinks.map(link => renderLink(link, true))}
               </div>
@@ -407,7 +419,7 @@ export default function NavigationShell({
                 <svg className={`w-4 h-4 transition-transform duration-300 ${isAttendeeExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </div>
             </button>
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAttendeeExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAttendeeExpanded ? 'max-h-[600px] opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
               <div className="space-y-2">
                 {attendeeLinks.map(link => renderLink(link, true))}
               </div>
@@ -436,7 +448,7 @@ export default function NavigationShell({
                   <svg className={`w-4 h-4 transition-transform duration-300 ${isAdminExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </div>
               </button>
-              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAdminExpanded ? 'max-h-96 opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isAdminExpanded ? 'max-h-[600px] opacity-100 mt-2' : 'max-h-0 opacity-0'} ${isCollapsed ? 'md:hidden' : ''}`}>
                 <div className="space-y-2">
                   {adminLinks.map(link => renderLink(link, true))}
                 </div>
