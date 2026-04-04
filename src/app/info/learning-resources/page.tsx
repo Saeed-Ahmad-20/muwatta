@@ -10,7 +10,7 @@ const resources = [
     description: "The complete Arabic text of the Muwatta which will be recited during the gathering.",
     type: "Primary Text",
     size: "33.9 MB",
-    link: "/downloads/muwatta-arabic.pdf" 
+    link: "/downloads/muwatta.pdf" 
   },
   {
     id: 2,
