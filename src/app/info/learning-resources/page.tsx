@@ -33,8 +33,24 @@ const resources = [
     title: "كشف المغطا في فضل الموطا",
     description: "The complete Arabic text of the Muwatta which will be recited during the gathering.",
     type: "Primary Text",
-    size: "0.49 MB",
+    size: "490 KB",
     link: "/downloads/كشف المغطا في فضل الموطا.pdf" 
+  },
+  {
+    id: 5,
+    title: "حديث الرحمة المسلسل بالأولية",
+    description: "The complete Arabic text of the Muwatta which will be recited during the gathering.",
+    type: "Primary Text",
+    size: "61.8 KB",
+    link: "/downloads/حديث الرحمة المسلسل بالأولية.pdf" 
+  },
+  {
+    id: 6,
+    title: "أسانيد أصول طبعة المجلس العلمي الأعلى للموطأ",
+    description: "The complete Arabic text of the Muwatta which will be recited during the gathering.",
+    type: "Primary Text",
+    size: "147 KB",
+    link: "/downloads/أسانيد أصول طبعة المجلس العلمي الأعلى للموطأ .pdf" 
   }
 ]
 
