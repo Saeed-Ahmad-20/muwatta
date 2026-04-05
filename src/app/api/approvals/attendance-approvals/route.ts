@@ -3,11 +3,13 @@ import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 // ==========================================
-// 🔒 CONCURRENCY LIMITER (unchanged)
+// 🔒 CONCURRENCY LIMITER (Server-Side Queue)
+//    Free Supabase plan — keep concurrent DB
+//    operations low to avoid connection limits.
 // ==========================================
-const MAX_CONCURRENT = 10
-const MAX_QUEUE_SIZE = 100
-const QUEUE_TIMEOUT_MS = 15000
+const MAX_CONCURRENT = 10       // Max simultaneous DB operations (free plan)
+const MAX_QUEUE_SIZE = 100      // Max waiting requests before rejecting
+const QUEUE_TIMEOUT_MS = 15000  // Max time a request waits in queue
 
 let activeCount = 0
 let queueSize = 0
@@ -47,8 +49,9 @@ function releaseSlot() {
 }
 // ==========================================
 
-// GET — unchanged
+// Fetch the pending attendance requests
 export async function GET() {
+  // 1. Auth check runs before the queue (no point queuing unauthorized requests)
   const cookieStore = await cookies()
   const isAuthenticated = cookieStore.has('admin_session')
 
@@ -56,6 +59,7 @@ export async function GET() {
     return NextResponse.json({ success: false, error: 'Unauthorized access.' }, { status: 401 })
   }
 
+  // 2. Wait for a slot in the queue
   try {
     await acquireSlot()
   } catch (err: any) {
@@ -71,9 +75,13 @@ export async function GET() {
         { status: 504 }
       )
     }
-    return NextResponse.json({ success: false, error: 'An unexpected error occurred.' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: 'An unexpected error occurred.' },
+      { status: 500 }
+    )
   }
 
+  // 3. Process the request (guaranteed to have a slot)
   try {
     const { data, error } = await supabaseAdmin
       .from('attendance_requests')
@@ -84,6 +92,7 @@ export async function GET() {
     if (error) throw new Error(error.message)
 
     return NextResponse.json({ success: true, data })
+
   } catch (error: any) {
     console.error('Fetch Attendance Approvals Error:', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
@@ -92,8 +101,9 @@ export async function GET() {
   }
 }
 
-// POST — now supports bulk via `requestIds` array
+// Process the approvals/rejections
 export async function POST(request: Request) {
+  // 1. Auth check runs before the queue
   const cookieStore = await cookies()
   const isAuthenticated = cookieStore.has('admin_session')
 
@@ -101,6 +111,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'Unauthorized access.' }, { status: 401 })
   }
 
+  // 2. Wait for a slot in the queue
   try {
     await acquireSlot()
   } catch (err: any) {
@@ -116,75 +127,61 @@ export async function POST(request: Request) {
         { status: 504 }
       )
     }
-    return NextResponse.json({ success: false, error: 'An unexpected error occurred.' }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: 'An unexpected error occurred.' },
+      { status: 500 }
+    )
   }
 
+  // 3. Process the request (guaranteed to have a slot)
   try {
-    const body = await request.json()
-    const { action } = body
+    // FIX: Now correctly receiving an array of requestIds from the frontend
+    const { requestIds, action } = await request.json()
 
-    // ── Normalise to an array (supports legacy `requestId` too) ──
-    let ids: number[] = []
-
-    if (Array.isArray(body.requestIds) && body.requestIds.length > 0) {
-      ids = body.requestIds
-    } else if (body.requestId) {
-      ids = [body.requestId]
-    }
-
-    if (ids.length === 0 || !action) {
+    if (!requestIds || !Array.isArray(requestIds) || requestIds.length === 0 || !action) {
       return NextResponse.json({ success: false, error: 'Missing parameters' }, { status: 400 })
     }
 
-    // ── REJECT (bulk) ────────────────────────────────────
+    // --- REJECT BULK / SINGLE ---
     if (action === 'reject') {
-      const { error } = await supabaseAdmin
-        .from('attendance_requests')
-        .delete()
-        .in('id', ids)
-
-      if (error) throw new Error('Failed to reject requests: ' + error.message)
-
+      // Uses .in() to delete multiple IDs at once
+      await supabaseAdmin.from('attendance_requests').delete().in('id', requestIds)
       return NextResponse.json({ success: true })
     }
 
-    // ── APPROVE (bulk) ───────────────────────────────────
+    // --- APPROVE BULK / SINGLE ---
     if (action === 'approve') {
-      // 1. Fetch every request in one query
-      const { data: reqRows, error: fetchError } = await supabaseAdmin
+      // 1. Fetch all requested records
+      const { data: reqData, error: reqError } = await supabaseAdmin
         .from('attendance_requests')
         .select('*')
-        .in('id', ids)
+        .in('id', requestIds) // Uses .in() to fetch multiple
 
-      if (fetchError) throw new Error('Could not fetch requests: ' + fetchError.message)
-      if (!reqRows || reqRows.length === 0) throw new Error('No matching requests found')
+      if (reqError || !reqData || reqData.length === 0) throw new Error("Could not find requests")
 
-      // 2. Bulk upsert into attendance_records
-      const records = reqRows.map(r => ({
-        attendee_id: r.attendee_id,
-        attendee_name: r.attendee_name,
-        event_date: r.event_date,
-        session_type: r.session_type
+      // 2. Map the data into an array formatted for the attendance_records table
+      const insertPayload = reqData.map(req => ({
+        attendee_id: req.attendee_id,
+        attendee_name: req.attendee_name,
+        event_date: req.event_date,
+        session_type: req.session_type
       }))
 
+      // 3. Upsert all records in a single database call (Bulk Insert)
       const { error: insertError } = await supabaseAdmin
         .from('attendance_records')
-        .upsert(records, { onConflict: 'attendee_id, event_date, session_type', ignoreDuplicates: true })
+        .upsert(insertPayload, { onConflict: 'attendee_id, event_date, session_type', ignoreDuplicates: true })
 
-      if (insertError) throw new Error('Failed to insert attendance records: ' + insertError.message)
+      if (insertError) throw new Error("Failed to insert attendance records: " + insertError.message)
 
-      // 3. Bulk delete the approved requests
-      const { error: deleteError } = await supabaseAdmin
-        .from('attendance_requests')
-        .delete()
-        .in('id', ids)
-
-      if (deleteError) throw new Error('Records inserted but failed to clean up requests: ' + deleteError.message)
+      // 4. Delete all processed requests from the queue
+      await supabaseAdmin.from('attendance_requests').delete().in('id', requestIds)
 
       return NextResponse.json({ success: true })
     }
 
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 })
+
   } catch (error: any) {
     console.error('Attendance Approvals Error:', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
