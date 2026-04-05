@@ -176,11 +176,6 @@ export default function ArrivalCheckIn() {
                       <span className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#DFC063' }}>Daily Attendance ID</span>
                       <p className="text-5xl font-black text-white tracking-tight">{successAttendee.id}</p>
                     </div>
-
-                    <div>
-                      <span className="block text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#DFC063' }}>Registration Code</span>
-                      <p className="text-sm font-mono" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>{successAttendee.tt_ticket_id}</p>
-                    </div>
                   </div>
                 </div>
               </div>
