@@ -135,47 +135,39 @@ export async function POST(request: Request) {
 
   // 3. Process the request (guaranteed to have a slot)
   try {
-    // FIX: Now correctly receiving an array of requestIds from the frontend
-    const { requestIds, action } = await request.json()
+    const { requestId, action } = await request.json()
 
-    if (!requestIds || !Array.isArray(requestIds) || requestIds.length === 0 || !action) {
+    if (!requestId || !action) {
       return NextResponse.json({ success: false, error: 'Missing parameters' }, { status: 400 })
     }
 
-    // --- REJECT BULK / SINGLE ---
     if (action === 'reject') {
-      // Uses .in() to delete multiple IDs at once
-      await supabaseAdmin.from('attendance_requests').delete().in('id', requestIds)
+      await supabaseAdmin.from('attendance_requests').delete().eq('id', requestId)
       return NextResponse.json({ success: true })
     }
 
-    // --- APPROVE BULK / SINGLE ---
     if (action === 'approve') {
-      // 1. Fetch all requested records
       const { data: reqData, error: reqError } = await supabaseAdmin
         .from('attendance_requests')
         .select('*')
-        .in('id', requestIds) // Uses .in() to fetch multiple
+        .eq('id', requestId)
+        .single()
 
-      if (reqError || !reqData || reqData.length === 0) throw new Error("Could not find requests")
-
-      // 2. Map the data into an array formatted for the attendance_records table
-      const insertPayload = reqData.map(req => ({
-        attendee_id: req.attendee_id,
-        attendee_name: req.attendee_name,
-        event_date: req.event_date,
-        session_type: req.session_type
-      }))
+      if (reqError || !reqData) throw new Error("Could not find request")
 
       // 3. Upsert all records in a single database call (Bulk Insert)
       const { error: insertError } = await supabaseAdmin
         .from('attendance_records')
-        .upsert(insertPayload, { onConflict: 'attendee_id, event_date, session_type', ignoreDuplicates: true })
+        .upsert({
+          attendee_id: reqData.attendee_id,
+          attendee_name: reqData.attendee_name,
+          event_date: reqData.event_date,
+          session_type: reqData.session_type
+        }, { onConflict: 'attendee_id, event_date, session_type', ignoreDuplicates: true })
 
-      if (insertError) throw new Error("Failed to insert attendance records: " + insertError.message)
+      if (insertError) throw new Error("Failed to insert attendance record: " + insertError.message)
 
-      // 4. Delete all processed requests from the queue
-      await supabaseAdmin.from('attendance_requests').delete().in('id', requestIds)
+      await supabaseAdmin.from('attendance_requests').delete().eq('id', requestId)
 
       return NextResponse.json({ success: true })
     }
