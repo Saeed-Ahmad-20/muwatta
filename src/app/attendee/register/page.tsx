@@ -10,7 +10,7 @@ const EVENT_DATES = [
   { id: '2026-04-07', label: 'Tuesday, April 7th' },
 ]
 
-const DEFAULT_SHARE_MESSAGE = `Alhamdulillah, I have just logged my attendance at the historic recital of al-Muwatta' of Imam Malik Ibn Anas with Shaykh Muhammad al-Yaqoubi. May Allah bless this blessed gathering and all those who attend. 📖✨`
+const DEFAULT_SHARE_MESSAGE = `Alhamdulillah! Logged my attendance for the historic recital of the Muwatta’ of Imam Malik, graced by the presence of Shaykh Muhammad al-Yaqoubi.\n\nSitting in this gathering of light, connecting to chains of transmission that span centuries...may Allah shower His infinite blessings upon this assembly, our teachers, and every soul seeking sacred knowledge.`
 
 const SHARE_HASHTAGS = "Muwatta2026,HadithRecital2026"
 
