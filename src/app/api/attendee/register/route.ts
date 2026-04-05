@@ -1,15 +1,12 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 // ==========================================
 // 🔒 CONCURRENCY LIMITER (Server-Side Queue)
-//    Protects the database from being overwhelmed
-//    by 500+ simultaneous requests. Only N requests
-//    hit Supabase at a time — the rest wait in line.
 // ==========================================
-const MAX_CONCURRENT = 10       // Max simultaneous DB operations
-const MAX_QUEUE_SIZE = 500      // Max waiting requests before rejecting
-const QUEUE_TIMEOUT_MS = 15000  // Max time a request waits in queue
+const MAX_CONCURRENT = 10
+const MAX_QUEUE_SIZE = 500
+const QUEUE_TIMEOUT_MS = 15000
 
 let activeCount = 0
 let queueSize = 0
@@ -50,9 +47,6 @@ function releaseSlot() {
 
 // ==========================================
 // 🔒 SERVER-SIDE DATE HELPER
-//    Gets today's date in London timezone.
-//    This is the source of truth — never
-//    trust the client's date/time.
 // ==========================================
 function getServerTodayString(): string {
   const formatter = new Intl.DateTimeFormat('en-GB', {
@@ -67,10 +61,91 @@ function getServerTodayString(): string {
 
   return `${getPart('year')}-${getPart('month')}-${getPart('day')}`
 }
-// ==========================================
 
-export async function POST(request: Request) {
-  // 1. Wait for a slot in the queue
+// ==========================================
+// 🔒 SHARED: Fetch full attendance from DB
+// ==========================================
+const EVENT_DATE_IDS = ['2026-04-04', '2026-04-05', '2026-04-06', '2026-04-07']
+
+async function fetchAttendanceFromDB(attendeeId: number) {
+  const { data: confirmed, error: confirmedError } = await supabaseAdmin
+    .from('attendance_records')
+    .select('event_date, session_type')
+    .eq('attendee_id', attendeeId)
+    .in('event_date', EVENT_DATE_IDS)
+
+  if (confirmedError) {
+    console.error('Error fetching confirmed records:', confirmedError)
+    return null
+  }
+
+  const { data: pending, error: pendingError } = await supabaseAdmin
+    .from('attendance_requests')
+    .select('event_date, session_type')
+    .eq('attendee_id', attendeeId)
+    .in('event_date', EVENT_DATE_IDS)
+
+  if (pendingError) {
+    console.error('Error fetching pending requests:', pendingError)
+    return null
+  }
+
+  const records: Record<string, { am: 'confirmed' | 'pending' | false; pm: 'confirmed' | 'pending' | false }> = {}
+
+  for (const dateId of EVENT_DATE_IDS) {
+    records[dateId] = { am: false, pm: false }
+  }
+
+  if (confirmed) {
+    for (const row of confirmed) {
+      if (records[row.event_date]) {
+        records[row.event_date][row.session_type as 'am' | 'pm'] = 'confirmed'
+      }
+    }
+  }
+
+  if (pending) {
+    for (const row of pending) {
+      if (records[row.event_date]) {
+        const session = row.session_type as 'am' | 'pm'
+        if (records[row.event_date][session] === false) {
+          records[row.event_date][session] = 'pending'
+        }
+      }
+    }
+  }
+
+  return records
+}
+
+// ==========================================
+// 🔒 SHARED: Verify attendee identity
+// ==========================================
+async function verifyAttendee(idNumber: string, postcode: string) {
+  const { data: attendee, error: dbError } = await supabaseAdmin
+    .from('attendees')
+    .select('*')
+    .eq('id', parseInt(idNumber))
+    .single()
+
+  if (dbError || !attendee) {
+    return { error: "We couldn't find an attendee with that ID Number.", status: 404 }
+  }
+
+  const dbPostcode = (attendee.postal_code || '').replace(/\s+/g, '').toLowerCase()
+  const inputPostcode = postcode.replace(/\s+/g, '').toLowerCase()
+
+  if (dbPostcode !== inputPostcode) {
+    return { error: "The postcode provided does not match our records for this ID Number.", status: 401 }
+  }
+
+  return { attendee }
+}
+
+// ==========================================
+// 📖 GET — Fetch fresh attendance records
+// ==========================================
+export async function GET(request: NextRequest) {
   try {
     await acquireSlot()
   } catch (err: any) {
@@ -86,55 +161,108 @@ export async function POST(request: Request) {
         { status: 504 }
       )
     }
-    return NextResponse.json(
-      { success: false, error: 'An unexpected error occurred.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, error: 'An unexpected error occurred.' }, { status: 500 })
   }
 
-  // 2. Process the request (guaranteed to have a slot)
   try {
-    // ⚠️ isRetroactive is intentionally NOT destructured from the client
+    const { searchParams } = new URL(request.url)
+    const idNumber = searchParams.get('idNumber')
+    const postcode = searchParams.get('postcode')
+
+    if (!idNumber || !postcode) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields: idNumber and postcode.' },
+        { status: 400 }
+      )
+    }
+
+    const result = await verifyAttendee(idNumber, postcode)
+
+    if (result.error) {
+      return NextResponse.json(
+        { success: false, error: result.error },
+        { status: result.status }
+      )
+    }
+
+    const records = await fetchAttendanceFromDB(result.attendee.id)
+
+    if (!records) {
+      return NextResponse.json(
+        { success: false, error: 'Could not fetch attendance records.' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ success: true, records })
+
+  } catch (error: any) {
+    console.error('Attendance GET Error:', error)
+    return NextResponse.json(
+      { success: false, error: error.message || 'Internal server error' },
+      { status: 500 }
+    )
+  } finally {
+    releaseSlot()
+  }
+}
+
+// ==========================================
+// ✏️ POST — Register attendance
+// ==========================================
+export async function POST(request: Request) {
+  try {
+    await acquireSlot()
+  } catch (err: any) {
+    if (err.message === 'SERVER_BUSY') {
+      return NextResponse.json(
+        { success: false, error: 'The server is experiencing very high traffic. Please wait a moment and try again.' },
+        { status: 503 }
+      )
+    }
+    if (err.message === 'QUEUE_TIMEOUT') {
+      return NextResponse.json(
+        { success: false, error: 'Your request timed out due to high traffic. Please try again.' },
+        { status: 504 }
+      )
+    }
+    return NextResponse.json({ success: false, error: 'An unexpected error occurred.' }, { status: 500 })
+  }
+
+  try {
     const { idNumber, postcode, selectedDate, selectedSessions } = await request.json()
 
     if (!idNumber || !postcode || !selectedDate || (!selectedSessions.am && !selectedSessions.pm)) {
       return NextResponse.json({ success: false, error: 'Missing required fields.' }, { status: 400 })
     }
 
-    // 🔒 SERVER decides if this is retroactive — client cannot influence this
+    // 🔒 SERVER decides if this is retroactive
     const serverToday = getServerTodayString()
     const isRetroactive = selectedDate < serverToday
 
-    // 🔒 Reject future dates entirely — no one can log attendance for a day that hasn't happened
+    // 🔒 Reject future dates
     if (selectedDate > serverToday) {
       return NextResponse.json({ success: false, error: 'You cannot log attendance for a future date.' }, { status: 400 })
     }
 
-    // Verify Attendee Exists (Bypass RLS)
-    const { data: attendee, error: dbError } = await supabaseAdmin
-      .from('attendees')
-      .select('*')
-      .eq('id', parseInt(idNumber))
-      .single()
+    // Verify identity using shared helper
+    const identity = await verifyAttendee(idNumber, postcode)
 
-    if (dbError || !attendee) {
-      return NextResponse.json({ success: false, error: "We couldn't find an attendee with that ID Number." }, { status: 404 })
+    if (identity.error) {
+      return NextResponse.json(
+        { success: false, error: identity.error },
+        { status: identity.status }
+      )
     }
 
-    // Security Check: Verify Postcode
-    const dbPostcode = (attendee.postal_code || '').replace(/\s+/g, '').toLowerCase()
-    const inputPostcode = postcode.replace(/\s+/g, '').toLowerCase()
-
-    if (dbPostcode !== inputPostcode) {
-      return NextResponse.json({ success: false, error: "The postcode provided does not match our records for this ID Number." }, { status: 401 })
-    }
+    const attendee = identity.attendee
 
     // Security Gate: Check-In Check
     if (!attendee.checked_in_at) {
       return NextResponse.json({ success: false, error: "Access Denied: You must complete your Initial Arrival check-in at the 'Check-In' tab before you can log daily sessions." }, { status: 403 })
     }
 
-    // 🔒 Route to the correct table based on SERVER-calculated retroactive status
+    // 🔒 Route to the correct table
     const targetTable = isRetroactive ? 'attendance_requests' : 'attendance_records'
 
     // Smart Duplicate Checker
@@ -160,7 +288,6 @@ export async function POST(request: Request) {
     const newAm = attemptAm && !alreadyLoggedAm
     const newPm = attemptPm && !alreadyLoggedPm
 
-    // Reject if trying to log something they already logged
     if (attemptAm && attemptPm && dupAm && dupPm) {
       return NextResponse.json({ success: false, error: "You have already logged your attendance for BOTH the AM and PM sessions on this date." }, { status: 400 })
     } else if (attemptAm && !attemptPm && dupAm) {
@@ -186,12 +313,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Failed to save attendance to the database. Please try again." }, { status: 500 })
     }
 
-    // 🔒 Return the SERVER-calculated isRetroactive so the frontend shows the right UI
+    // 🔒 Fetch fresh records from DB AFTER insert
+    const attendanceRecords = await fetchAttendanceFromDB(attendee.id)
+
     return NextResponse.json({
       success: true,
       attendee,
       newAm, newPm, dupAm, dupPm,
-      isRetroactive
+      isRetroactive,
+      attendanceRecords,
     })
 
   } catch (error: any) {

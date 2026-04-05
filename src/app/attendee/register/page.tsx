@@ -4,15 +4,18 @@ import { useState, useEffect } from 'react'
 import { getServerTime } from '@/app/actions'
 
 const EVENT_DATES = [
-  { id: '2026-04-04', label: 'Saturday, April 4th' },
-  { id: '2026-04-05', label: 'Sunday, April 5th' },
-  { id: '2026-04-06', label: 'Monday, April 6th' },
-  { id: '2026-04-07', label: 'Tuesday, April 7th' },
+  { id: '2026-04-04', label: 'Saturday, April 4th', shortLabel: 'Sat 4th' },
+  { id: '2026-04-05', label: 'Sunday, April 5th', shortLabel: 'Sun 5th' },
+  { id: '2026-04-06', label: 'Monday, April 6th', shortLabel: 'Mon 6th' },
+  { id: '2026-04-07', label: 'Tuesday, April 7th', shortLabel: 'Tue 7th' },
 ]
 
 const DEFAULT_SHARE_MESSAGE = `Alhamdulillah! Logged my attendance for the historic recital of the Muwatta' of Imam Malik, graced by the presence of Shaykh Muhammad al-Yaqoubi.\n\nSitting in this gathering of light, connecting to chains of transmission that span centuries...may Allah shower His infinite blessings upon this assembly, our teachers, and every soul seeking sacred knowledge.`
 
 const SHARE_HASHTAGS = "Muwatta2026,HadithRecital2026"
+
+type SessionStatus = 'confirmed' | 'pending' | false
+type AttendanceRecords = Record<string, { am: SessionStatus; pm: SessionStatus }>
 
 export default function RegisterAttendance() {
   const [isMounted, setIsMounted] = useState(false)
@@ -37,6 +40,9 @@ export default function RegisterAttendance() {
   const [timeOffset, setTimeOffset] = useState<number | null>(null)
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'retrying' | 'fallback'>('syncing')
 
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecords | null>(null)
+  const [loadingRecords, setLoadingRecords] = useState(false)
+
   // 1. Synchronize the secure clock on load with timeout, retry, and fallback
   useEffect(() => {
     setIsMounted(true)
@@ -54,7 +60,6 @@ export default function RegisterAttendance() {
 
         const clientTime = Date.now()
 
-        // Race the server action against a timeout
         const serverIso = await Promise.race([
           getServerTime(),
           new Promise<never>((_, reject) =>
@@ -75,12 +80,10 @@ export default function RegisterAttendance() {
         if (cancelled) return
 
         if (attempt < MAX_ATTEMPTS) {
-          // Exponential backoff: 1s, 2s, 4s...
           await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)))
           if (!cancelled) return syncClock(attempt + 1)
         }
 
-        // All retries exhausted — fall back to client clock
         console.warn('Clock sync failed after retries, using client time:', e)
         if (!cancelled) {
           setSyncStatus('fallback')
@@ -166,11 +169,37 @@ export default function RegisterAttendance() {
     return () => clearInterval(interval)
   }, [isMounted, timeOffset, selectedDate])
 
+  // Fetch attendance records fresh from the database via GET on the same register route
+  const fetchAttendanceRecords = async (id: string, pc: string) => {
+    setLoadingRecords(true)
+    try {
+      const response = await fetch(
+        `/api/attendee/register?idNumber=${encodeURIComponent(id)}&postcode=${encodeURIComponent(pc)}`
+      )
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        console.warn('Could not fetch attendance records:', result.error)
+        setAttendanceRecords(null)
+        return
+      }
+
+      setAttendanceRecords(result.records)
+    } catch (e) {
+      console.warn('Failed to fetch attendance records:', e)
+      setAttendanceRecords(null)
+    } finally {
+      setLoadingRecords(false)
+    }
+  }
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
     setSuccessData(null)
+    setAttendanceRecords(null)
 
     try {
       if (!selectedDate || (!selectedSessions.am && !selectedSessions.pm)) {
@@ -207,6 +236,14 @@ export default function RegisterAttendance() {
         already_registered: { am: result.dupAm, pm: result.dupPm },
         isRetroactive: result.isRetroactive,
       })
+
+      // POST already returns fresh records from DB — use them directly
+      if (result.attendanceRecords) {
+        setAttendanceRecords(result.attendanceRecords)
+      } else {
+        // Fallback: GET fresh records separately
+        await fetchAttendanceRecords(idNumber, postcode)
+      }
     } catch (err: any) {
       setError(err.message || 'An error occurred while verifying your details.')
     } finally {
@@ -248,7 +285,7 @@ export default function RegisterAttendance() {
           text: shareMessage,
         })
       } catch {
-        // User cancelled — do nothing
+        // User cancelled
       }
     }
   }
@@ -259,6 +296,52 @@ export default function RegisterAttendance() {
     facebook: `https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(shareMessage)}`,
     telegram: `https://t.me/share/url?text=${encodeURIComponent(shareMessage)}`,
   })
+
+  const getAttendanceSummary = () => {
+    let confirmed = 0
+    let pending = 0
+    const total = EVENT_DATES.length * 2
+
+    if (!attendanceRecords) return { confirmed, pending, total }
+
+    EVENT_DATES.forEach((date) => {
+      const record = attendanceRecords[date.id]
+      if (record) {
+        if (record.am === 'confirmed') confirmed++
+        if (record.am === 'pending') pending++
+        if (record.pm === 'confirmed') confirmed++
+        if (record.pm === 'pending') pending++
+      }
+    })
+
+    return { confirmed, pending, total }
+  }
+
+  const renderSessionCell = (status: SessionStatus) => {
+    if (status === 'confirmed') {
+      return (
+        <div className="w-7 h-7 rounded-md bg-green-100 border-2 border-green-500 flex items-center justify-center">
+          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      )
+    }
+
+    if (status === 'pending') {
+      return (
+        <div className="w-7 h-7 rounded-md bg-yellow-50 border-2 border-yellow-400 flex items-center justify-center">
+          <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+      )
+    }
+
+    return (
+      <div className="w-7 h-7 rounded-md bg-gray-50 border-2 border-gray-200"></div>
+    )
+  }
 
   // --- RENDER STATES ---
 
@@ -298,9 +381,9 @@ export default function RegisterAttendance() {
         </svg>
         <h1 className="text-4xl font-bold mb-4">Alhamdulillah</h1>
         <p className="text-lg max-w-xl mx-auto opacity-90 leading-relaxed">
-          The historic recital of al-Muwatta&apos; of Imam Malik Ibn Anas with Shaykh Muhammad al-Yaqoubi
-          has officially concluded. Registration is now permanently closed. May Allah accept
-          everyone&apos;s efforts and attendance.
+          The historic recital of al-Muwatta&apos; of Imam Malik Ibn Anas with Shaykh Muhammad
+          al-Yaqoubi has officially concluded. Registration is now permanently closed. May Allah
+          accept everyone&apos;s efforts and attendance.
         </p>
       </div>
     )
@@ -329,6 +412,7 @@ export default function RegisterAttendance() {
   }
 
   const shareLinks = getShareLinks()
+  const summary = getAttendanceSummary()
 
   // --- MAIN FORM ---
   return (
@@ -416,6 +500,176 @@ export default function RegisterAttendance() {
               </div>
 
               {/* ============================== */}
+              {/* ATTENDANCE RECORD GRID         */}
+              {/* ============================== */}
+              <div className="bg-gray-50 rounded-lg p-5 mb-6 border border-gray-200 text-left">
+                <h3 className="text-sm font-bold text-brand-burgundy uppercase tracking-wider text-center mb-1">
+                  Your Attendance Record
+                </h3>
+
+                {loadingRecords ? (
+                  <div className="flex flex-col items-center justify-center py-6">
+                    <div className="w-6 h-6 border-3 border-gray-200 border-t-brand-burgundy rounded-full animate-spin mb-2"></div>
+                    <p className="text-xs text-gray-400">Loading records...</p>
+                  </div>
+                ) : attendanceRecords ? (
+                  <>
+                    <p className="text-xs text-gray-500 text-center mb-4">
+                      {summary.confirmed} of {summary.total} sessions
+                      {summary.pending > 0 && (
+                        <span className="text-yellow-600"> · {summary.pending} pending</span>
+                      )}
+                    </p>
+
+                    {/* Progress bar */}
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-5 overflow-hidden">
+                      <div className="h-full rounded-full flex">
+                        <div
+                          className="bg-green-500 h-full transition-all duration-500"
+                          style={{ width: `${(summary.confirmed / summary.total) * 100}%` }}
+                        />
+                        <div
+                          className="bg-yellow-400 h-full transition-all duration-500"
+                          style={{ width: `${(summary.pending / summary.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Date rows */}
+                    <div className="space-y-2">
+                      {EVENT_DATES.map((date) => {
+                        const record = attendanceRecords[date.id] || { am: false, pm: false }
+                        const hasAny = record.am || record.pm
+
+                        return (
+                          <div
+                            key={date.id}
+                            className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                              hasAny
+                                ? 'bg-white border-gray-200'
+                                : 'bg-gray-50/50 border-gray-100'
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`text-sm font-semibold truncate ${
+                                  hasAny ? 'text-brand-burgundy' : 'text-gray-400'
+                                }`}
+                              >
+                                {date.shortLabel}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-col items-center mx-2">
+                              <span
+                                className={`text-[10px] font-bold uppercase mb-1 ${
+                                  record.am ? 'text-gray-600' : 'text-gray-300'
+                                }`}
+                              >
+                                AM
+                              </span>
+                              {renderSessionCell(record.am)}
+                            </div>
+
+                            <div className="flex flex-col items-center ml-1">
+                              <span
+                                className={`text-[10px] font-bold uppercase mb-1 ${
+                                  record.pm ? 'text-gray-600' : 'text-gray-300'
+                                }`}
+                              >
+                                PM
+                              </span>
+                              {renderSessionCell(record.pm)}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-gray-200">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded bg-green-100 border-2 border-green-500 flex items-center justify-center">
+                          <svg
+                            className="w-2.5 h-2.5 text-green-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={3}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                        <span className="text-[10px] text-gray-500 font-medium">Confirmed</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded bg-yellow-50 border-2 border-yellow-400 flex items-center justify-center">
+                          <svg
+                            className="w-2.5 h-2.5 text-yellow-500"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        </div>
+                        <span className="text-[10px] text-gray-500 font-medium">Pending</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded bg-gray-50 border-2 border-gray-200"></div>
+                        <span className="text-[10px] text-gray-500 font-medium">Not logged</span>
+                      </div>
+                    </div>
+
+                    {/* Refresh button */}
+                    <div className="mt-3 pt-3 border-t border-gray-200 text-center">
+                      <button
+                        onClick={() => fetchAttendanceRecords(idNumber, postcode)}
+                        disabled={loadingRecords}
+                        className="text-xs text-gray-400 hover:text-brand-burgundy transition-colors font-medium inline-flex items-center gap-1"
+                      >
+                        <svg
+                          className={`w-3 h-3 ${loadingRecords ? 'animate-spin' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                        Refresh records
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-4 text-center">
+                    <p className="text-xs text-gray-400">
+                      Could not load attendance records.
+                    </p>
+                    <button
+                      onClick={() => fetchAttendanceRecords(idNumber, postcode)}
+                      className="text-xs text-brand-burgundy hover:underline font-medium mt-1"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* ============================== */}
               {/* SOCIAL MEDIA SHARE SECTION     */}
               {/* ============================== */}
               <div className="bg-gray-50 rounded-lg p-5 mb-6 border border-gray-200 text-left">
@@ -426,7 +680,6 @@ export default function RegisterAttendance() {
                   Let others know about this historic gathering
                 </p>
 
-                {/* Message preview / editor */}
                 <div className="bg-white border border-gray-200 rounded-lg mb-4 overflow-hidden">
                   {isEditingMessage ? (
                     <div>
@@ -482,9 +735,7 @@ export default function RegisterAttendance() {
                   )}
                 </div>
 
-                {/* Share buttons */}
                 <div className="grid grid-cols-2 gap-2 mb-3">
-                  {/* WhatsApp */}
                   <a
                     href={shareLinks.whatsapp}
                     target="_blank"
@@ -497,7 +748,6 @@ export default function RegisterAttendance() {
                     WhatsApp
                   </a>
 
-                  {/* Twitter / X */}
                   <a
                     href={shareLinks.twitter}
                     target="_blank"
@@ -510,7 +760,6 @@ export default function RegisterAttendance() {
                     X (Twitter)
                   </a>
 
-                  {/* Facebook */}
                   <a
                     href={shareLinks.facebook}
                     target="_blank"
@@ -523,7 +772,6 @@ export default function RegisterAttendance() {
                     Facebook
                   </a>
 
-                  {/* Telegram */}
                   <a
                     href={shareLinks.telegram}
                     target="_blank"
@@ -536,7 +784,6 @@ export default function RegisterAttendance() {
                     Telegram
                   </a>
 
-                  {/* Instagram — spans full width */}
                   <button
                     onClick={handleInstagramShare}
                     className="col-span-2 flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white rounded-lg font-bold text-xs hover:opacity-90 transition-opacity shadow-sm"
@@ -548,7 +795,6 @@ export default function RegisterAttendance() {
                   </button>
                 </div>
 
-                {/* Copy & Native Share */}
                 <div className="flex gap-2">
                   <button
                     onClick={handleCopyMessage}
@@ -560,35 +806,15 @@ export default function RegisterAttendance() {
                   >
                     {copied ? (
                       <>
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         Copied!
                       </>
                     ) : (
                       <>
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                          />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
                         Copy Message
                       </>
@@ -600,18 +826,8 @@ export default function RegisterAttendance() {
                       onClick={handleNativeShare}
                       className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-brand-burgundy text-brand-gold rounded-lg font-bold text-xs hover:bg-brand-burgundy-dark transition-colors shadow-sm"
                     >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                        />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                       </svg>
                       Share...
                     </button>
@@ -622,6 +838,7 @@ export default function RegisterAttendance() {
               <button
                 onClick={() => {
                   setSuccessData(null)
+                  setAttendanceRecords(null)
                   setIdNumber('')
                   setPostcode('')
                   setSelectedSessions({ am: false, pm: false })
@@ -666,18 +883,8 @@ export default function RegisterAttendance() {
                 </select>
                 {selectedDate && selectedDate < todayString && (
                   <p className="text-xs text-yellow-600 mt-2 flex items-center font-medium">
-                    <svg
-                      className="w-4 h-4 mr-1"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Retroactive log: Requires admin approval
                   </p>
@@ -742,7 +949,9 @@ export default function RegisterAttendance() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-brand-burgundy mb-1">Postcode</label>
+                <label className="block text-sm font-bold text-brand-burgundy mb-1">
+                  Postcode
+                </label>
                 <input
                   type="text"
                   value={postcode}
