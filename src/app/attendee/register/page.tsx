@@ -4,18 +4,15 @@ import { useState, useEffect } from 'react'
 import { getServerTime } from '@/app/actions'
 
 const EVENT_DATES = [
-  { id: '2026-04-04', label: 'Saturday, April 4th', shortLabel: 'Sat 4th' },
-  { id: '2026-04-05', label: 'Sunday, April 5th', shortLabel: 'Sun 5th' },
-  { id: '2026-04-06', label: 'Monday, April 6th', shortLabel: 'Mon 6th' },
-  { id: '2026-04-07', label: 'Tuesday, April 7th', shortLabel: 'Tue 7th' },
+  { id: '2026-04-04', label: 'Saturday, April 4th' },
+  { id: '2026-04-05', label: 'Sunday, April 5th' },
+  { id: '2026-04-06', label: 'Monday, April 6th' },
+  { id: '2026-04-07', label: 'Tuesday, April 7th' },
 ]
 
 const DEFAULT_SHARE_MESSAGE = `Alhamdulillah! Logged my attendance for the historic recital of the Muwatta' of Imam Malik, graced by the presence of Shaykh Muhammad al-Yaqoubi.\n\nSitting in this gathering of light, connecting to chains of transmission that span centuries...may Allah shower His infinite blessings upon this assembly, our teachers, and every soul seeking sacred knowledge.`
 
 const SHARE_HASHTAGS = "Muwatta2026,HadithRecital2026"
-
-type SessionStatus = 'confirmed' | 'pending' | false
-type AttendanceRecords = Record<string, { am: SessionStatus; pm: SessionStatus }>
 
 export default function RegisterAttendance() {
   const [isMounted, setIsMounted] = useState(false)
@@ -40,8 +37,6 @@ export default function RegisterAttendance() {
   const [timeOffset, setTimeOffset] = useState<number | null>(null)
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'retrying' | 'fallback'>('syncing')
 
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecords>({})
-
   // 1. Synchronize the secure clock on load with timeout, retry, and fallback
   useEffect(() => {
     setIsMounted(true)
@@ -59,6 +54,7 @@ export default function RegisterAttendance() {
 
         const clientTime = Date.now()
 
+        // Race the server action against a timeout
         const serverIso = await Promise.race([
           getServerTime(),
           new Promise<never>((_, reject) =>
@@ -79,10 +75,12 @@ export default function RegisterAttendance() {
         if (cancelled) return
 
         if (attempt < MAX_ATTEMPTS) {
+          // Exponential backoff: 1s, 2s, 4s...
           await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)))
           if (!cancelled) return syncClock(attempt + 1)
         }
 
+        // All retries exhausted — fall back to client clock
         console.warn('Clock sync failed after retries, using client time:', e)
         if (!cancelled) {
           setSyncStatus('fallback')
@@ -202,41 +200,6 @@ export default function RegisterAttendance() {
 
       const selectedDateLabel = EVENT_DATES.find((d) => d.id === selectedDate)?.label
 
-      // Build attendance records from API response
-      if (result.attendanceRecords) {
-        setAttendanceRecords(result.attendanceRecords)
-      } else {
-        // Fallback: merge new registration into existing local records
-        setAttendanceRecords((prev) => {
-          const updated = { ...prev }
-          const status: SessionStatus = result.isRetroactive ? 'pending' : 'confirmed'
-
-          if (!updated[selectedDate]) {
-            updated[selectedDate] = { am: false, pm: false }
-          }
-
-          if (selectedSessions.am && !result.dupAm) {
-            updated[selectedDate] = { ...updated[selectedDate], am: status }
-          } else if (result.dupAm) {
-            updated[selectedDate] = {
-              ...updated[selectedDate],
-              am: updated[selectedDate].am || 'confirmed',
-            }
-          }
-
-          if (selectedSessions.pm && !result.dupPm) {
-            updated[selectedDate] = { ...updated[selectedDate], pm: status }
-          } else if (result.dupPm) {
-            updated[selectedDate] = {
-              ...updated[selectedDate],
-              pm: updated[selectedDate].pm || 'confirmed',
-            }
-          }
-
-          return updated
-        })
-      }
-
       setSuccessData({
         ...result.attendee,
         registered_date: selectedDateLabel,
@@ -285,7 +248,7 @@ export default function RegisterAttendance() {
           text: shareMessage,
         })
       } catch {
-        // User cancelled
+        // User cancelled — do nothing
       }
     }
   }
@@ -296,52 +259,6 @@ export default function RegisterAttendance() {
     facebook: `https://www.facebook.com/sharer/sharer.php?quote=${encodeURIComponent(shareMessage)}`,
     telegram: `https://t.me/share/url?text=${encodeURIComponent(shareMessage)}`,
   })
-
-  // Helper to get the total confirmed sessions count
-  const getAttendanceSummary = () => {
-    let confirmed = 0
-    let pending = 0
-    const total = EVENT_DATES.length * 2
-
-    EVENT_DATES.forEach((date) => {
-      const record = attendanceRecords[date.id]
-      if (record) {
-        if (record.am === 'confirmed') confirmed++
-        if (record.am === 'pending') pending++
-        if (record.pm === 'confirmed') confirmed++
-        if (record.pm === 'pending') pending++
-      }
-    })
-
-    return { confirmed, pending, total }
-  }
-
-  // Render a single attendance cell
-  const renderSessionCell = (status: SessionStatus) => {
-    if (status === 'confirmed') {
-      return (
-        <div className="w-7 h-7 rounded-md bg-green-100 border-2 border-green-500 flex items-center justify-center">
-          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-      )
-    }
-
-    if (status === 'pending') {
-      return (
-        <div className="w-7 h-7 rounded-md bg-yellow-50 border-2 border-yellow-400 flex items-center justify-center">
-          <svg className="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-      )
-    }
-
-    return (
-      <div className="w-7 h-7 rounded-md bg-gray-50 border-2 border-gray-200"></div>
-    )
-  }
 
   // --- RENDER STATES ---
 
@@ -381,9 +298,9 @@ export default function RegisterAttendance() {
         </svg>
         <h1 className="text-4xl font-bold mb-4">Alhamdulillah</h1>
         <p className="text-lg max-w-xl mx-auto opacity-90 leading-relaxed">
-          The historic recital of al-Muwatta&apos; of Imam Malik Ibn Anas with Shaykh Muhammad
-          al-Yaqoubi has officially concluded. Registration is now permanently closed. May Allah
-          accept everyone&apos;s efforts and attendance.
+          The historic recital of al-Muwatta&apos; of Imam Malik Ibn Anas with Shaykh Muhammad al-Yaqoubi
+          has officially concluded. Registration is now permanently closed. May Allah accept
+          everyone&apos;s efforts and attendance.
         </p>
       </div>
     )
@@ -412,7 +329,6 @@ export default function RegisterAttendance() {
   }
 
   const shareLinks = getShareLinks()
-  const summary = getAttendanceSummary()
 
   // --- MAIN FORM ---
   return (
@@ -497,133 +413,6 @@ export default function RegisterAttendance() {
                     {successData.already_registered.pm && ' PM'} session(s) previously.
                   </div>
                 )}
-              </div>
-
-              {/* ============================== */}
-              {/* ATTENDANCE RECORD GRID         */}
-              {/* ============================== */}
-              <div className="bg-gray-50 rounded-lg p-5 mb-6 border border-gray-200 text-left">
-                <h3 className="text-sm font-bold text-brand-burgundy uppercase tracking-wider text-center mb-1">
-                  Your Attendance Record
-                </h3>
-                <p className="text-xs text-gray-500 text-center mb-4">
-                  {summary.confirmed} of {summary.total} sessions
-                  {summary.pending > 0 && (
-                    <span className="text-yellow-600"> · {summary.pending} pending</span>
-                  )}
-                </p>
-
-                {/* Progress bar */}
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-5 overflow-hidden">
-                  <div className="h-full rounded-full flex">
-                    <div
-                      className="bg-green-500 h-full transition-all duration-500"
-                      style={{ width: `${(summary.confirmed / summary.total) * 100}%` }}
-                    />
-                    <div
-                      className="bg-yellow-400 h-full transition-all duration-500"
-                      style={{ width: `${(summary.pending / summary.total) * 100}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Date rows */}
-                <div className="space-y-2">
-                  {EVENT_DATES.map((date) => {
-                    const record = attendanceRecords[date.id] || { am: false, pm: false }
-                    const hasAny = record.am || record.pm
-
-                    return (
-                      <div
-                        key={date.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                          hasAny
-                            ? 'bg-white border-gray-200'
-                            : 'bg-gray-50/50 border-gray-100'
-                        }`}
-                      >
-                        {/* Date label */}
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-sm font-semibold truncate ${
-                              hasAny ? 'text-brand-burgundy' : 'text-gray-400'
-                            }`}
-                          >
-                            {date.shortLabel}
-                          </p>
-                        </div>
-
-                        {/* AM cell */}
-                        <div className="flex flex-col items-center mx-2">
-                          <span
-                            className={`text-[10px] font-bold uppercase mb-1 ${
-                              record.am ? 'text-gray-600' : 'text-gray-300'
-                            }`}
-                          >
-                            AM
-                          </span>
-                          {renderSessionCell(record.am)}
-                        </div>
-
-                        {/* PM cell */}
-                        <div className="flex flex-col items-center ml-1">
-                          <span
-                            className={`text-[10px] font-bold uppercase mb-1 ${
-                              record.pm ? 'text-gray-600' : 'text-gray-300'
-                            }`}
-                          >
-                            PM
-                          </span>
-                          {renderSessionCell(record.pm)}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                {/* Legend */}
-                <div className="flex items-center justify-center gap-4 mt-4 pt-3 border-t border-gray-200">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-4 h-4 rounded bg-green-100 border-2 border-green-500 flex items-center justify-center">
-                      <svg
-                        className="w-2.5 h-2.5 text-green-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </div>
-                    <span className="text-[10px] text-gray-500 font-medium">Confirmed</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-4 h-4 rounded bg-yellow-50 border-2 border-yellow-400 flex items-center justify-center">
-                      <svg
-                        className="w-2.5 h-2.5 text-yellow-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                    <span className="text-[10px] text-gray-500 font-medium">Pending</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-4 h-4 rounded bg-gray-50 border-2 border-gray-200"></div>
-                    <span className="text-[10px] text-gray-500 font-medium">Not logged</span>
-                  </div>
-                </div>
               </div>
 
               {/* ============================== */}
@@ -747,7 +536,7 @@ export default function RegisterAttendance() {
                     Telegram
                   </a>
 
-                  {/* Instagram */}
+                  {/* Instagram — spans full width */}
                   <button
                     onClick={handleInstagramShare}
                     className="col-span-2 flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white rounded-lg font-bold text-xs hover:opacity-90 transition-opacity shadow-sm"
@@ -953,9 +742,7 @@ export default function RegisterAttendance() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-brand-burgundy mb-1">
-                  Postcode
-                </label>
+                <label className="block text-sm font-bold text-brand-burgundy mb-1">Postcode</label>
                 <input
                   type="text"
                   value={postcode}
