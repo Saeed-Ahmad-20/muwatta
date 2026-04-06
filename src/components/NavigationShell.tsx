@@ -233,6 +233,7 @@ export default function NavigationShell({
     { name: 'Check-In', href: '/attendee/check-in' },
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
+    { name: 'Ijazah Collection', href: '/attendee/ijazah-collection' }, // ← NEW
   ]
 
   const adminLinks = [
@@ -242,7 +243,7 @@ export default function NavigationShell({
     { name: 'Attendance Approvals', href: '/admin/attendance-approvals' },
     { name: 'Ijazah List', href: '/admin/ijazah-list' },
     { name: 'Manual Registration', href: '/admin/manual-register' },
-    { name: 'Table Creator', href: '/admin/table-creator' }, 
+    { name: 'Table Creator', href: '/admin/table-creator' },
     { name: 'Manage Announcements', href: '/admin/announcements' },
   ]
 
@@ -261,13 +262,15 @@ export default function NavigationShell({
       '/attendee/check-in': 'Check-In',
       '/attendee/register': 'Register Attendance',
       '/attendee/my-details': 'My Details',
+      '/attendee/ijazah-collection': 'Ijazah Collection', // ← NEW
       '/attendee/fawaat': 'Fawaat Noticeboard',
       '/admin/attendees': 'Attendees Database',
+      '/admin/statistics': 'Dashboard & Stats',
       '/admin/approvals': 'Detail Approvals',
       '/admin/attendance-approvals': 'Attendance Approvals',
       '/admin/ijazah-list': 'Ijazah List',
       '/admin/manual-register': 'Manual Registration',
-      '/admin/table-creator': 'Table Creator', 
+      '/admin/table-creator': 'Table Creator',
       '/admin/announcements': 'Manage Announcements',
     }
 
