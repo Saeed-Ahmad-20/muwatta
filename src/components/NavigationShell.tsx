@@ -245,6 +245,7 @@ export default function NavigationShell({
     { name: 'Manual Registration', href: '/admin/manual-register' },
     { name: 'Table Creator', href: '/admin/table-creator' },
     { name: 'Manage Announcements', href: '/admin/announcements' },
+    { name: 'Ijazah Distribution', href: '/admin/ijazah-station' },
   ]
 
   const getPageTitle = () => {
@@ -272,6 +273,7 @@ export default function NavigationShell({
       '/admin/manual-register': 'Manual Registration',
       '/admin/table-creator': 'Table Creator',
       '/admin/announcements': 'Manage Announcements',
+      '/admin/ijazah-station': 'Ijazah Distribution',
     }
 
     if (titles[pathname]) return titles[pathname]
