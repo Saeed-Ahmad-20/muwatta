@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
-// ==========================================
-// 📖 GET — Lookup ijazah station by ID
-// ==========================================
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -25,9 +22,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Fetch the attendee's record
     const { data: record, error: dbError } = await supabaseAdmin
       .from('ijazah_collection')
-      .select('ID, english_name, arabic_name, collection_station, received')
+      .select('ID, english_name, arabic_name, collection_station')
       .eq('ID', parsedId)
       .single()
 
@@ -38,32 +36,33 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // If this person has no station, find the last station so we can
+    // direct them there for help (e.g. their ijazah isn't ready yet).
+    // Only relevant when stations have actually been assigned to others.
+    let lastStation: string | null = null
+
     if (!record.collection_station) {
-      return NextResponse.json({
-        success: true,
-        found: true,
-        stationsReady: false,
-        record: {
-          ID: record.ID,
-          english_name: record.english_name,
-          arabic_name: record.arabic_name,
-          collection_station: null,
-          received: record.received,
-        },
-      })
+      const { data: stations, error: stationsError } = await supabaseAdmin
+        .from('ijazah_collection')
+        .select('collection_station')
+        .not('collection_station', 'is', null)
+        .order('collection_station', { ascending: false })
+        .limit(1)
+
+      if (!stationsError && stations && stations.length > 0) {
+        lastStation = stations[0].collection_station
+      }
     }
 
     return NextResponse.json({
       success: true,
-      found: true,
-      stationsReady: true,
       record: {
         ID: record.ID,
         english_name: record.english_name,
         arabic_name: record.arabic_name,
         collection_station: record.collection_station,
-        received: record.received,
       },
+      lastStation,
     })
 
   } catch (error: any) {

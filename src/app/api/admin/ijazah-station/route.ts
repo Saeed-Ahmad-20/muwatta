@@ -58,7 +58,6 @@ export async function GET() {
     const stationSet = new Set(records.map((r: any) => r.collection_station).filter(Boolean))
     const stationsAssigned = stationSet.size > 0
 
-    // Build per-station stats
     const stationStats: Record<string, { total: number; collected: number; remaining: number }> = {}
     records.forEach((r: any) => {
       const station = r.collection_station
@@ -77,7 +76,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      records,
+      records: records ?? [],
       stats: {
         total,
         collected,
@@ -89,7 +88,7 @@ export async function GET() {
     })
   } catch (error: any) {
     console.error('Ijazah GET Error:', error)
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    return NextResponse.json({ success: false, error: error.message, records: [], stats: null }, { status: 500 })
   }
 }
 
@@ -119,7 +118,6 @@ export async function POST(request: NextRequest) {
       const trimmed = String(searchValue).trim()
       let record: any = null
 
-      // Try by ID first
       const parsedId = parseInt(trimmed)
       if (!isNaN(parsedId)) {
         const { data, error } = await supabaseAdmin
@@ -133,7 +131,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // If not found by ID, try by english_name (case-insensitive)
       if (!record) {
         const { data, error } = await supabaseAdmin
           .from('ijazah_collection')
@@ -174,7 +171,6 @@ export async function POST(request: NextRequest) {
       }
 
       const updatedRecord = { ...record, received: true }
-
       console.log(`[Ijazah] Marked as received: #${record.ID} (${record.english_name})`)
 
       return NextResponse.json({
@@ -232,32 +228,58 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Please choose between 1 and 26 stations.' }, { status: 400 })
       }
 
-      // Fetch all records ordered by ID
       const allRecords = await fetchAllIjazahRows()
 
       if (allRecords.length === 0) {
         return NextResponse.json({ success: false, error: 'No ijazah records found to assign.' }, { status: 400 })
       }
 
-      const totalRecords = allRecords.length
-      const perStation = Math.ceil(totalRecords / stationCount)
+      // Separate ready and not-ready
+      const readyRecords = allRecords.filter((r: any) => r.received)
+      const notReadyRecords = allRecords.filter((r: any) => !r.received)
 
       // Generate station labels: A, B, C, ... Z
-      const stationLabels = Array.from({ length: stationCount }, (_, i) => String.fromCharCode(65 + i))
+      const stationLabels = Array.from({ length: stationCount }, (_, i) =>
+        `Station ${String.fromCharCode(65 + i)}`
+      )
 
-      // Build batch updates
+      const lastStationLabel = stationLabels[stationCount - 1]
+
+      // Build assignments
       const updates: { id: number; station: string }[] = []
-      allRecords.forEach((record: any, index: number) => {
-        const stationIndex = Math.min(Math.floor(index / perStation), stationCount - 1)
-        updates.push({ id: record.ID, station: `Station ${stationLabels[stationIndex]}` })
-      })
 
-      // Execute updates in batches to avoid overwhelming the database
+      if (stationCount === 1) {
+        // Only 1 station — everything goes to Station A
+        allRecords.forEach((record: any) => {
+          updates.push({ id: record.ID, station: stationLabels[0] })
+        })
+      } else {
+        // Multiple stations:
+        // Ready ijazahs → distributed across stations 1 to N-1
+        // Not-ready ijazahs → all go to station N (last)
+        const distributionStations = stationLabels.slice(0, stationCount - 1)
+        const perStation = readyRecords.length > 0
+          ? Math.ceil(readyRecords.length / distributionStations.length)
+          : 0
+
+        readyRecords.forEach((record: any, index: number) => {
+          const stationIndex = Math.min(
+            Math.floor(index / perStation),
+            distributionStations.length - 1
+          )
+          updates.push({ id: record.ID, station: distributionStations[stationIndex] })
+        })
+
+        notReadyRecords.forEach((record: any) => {
+          updates.push({ id: record.ID, station: lastStationLabel })
+        })
+      }
+
+      // Execute updates in batches
       const BATCH_SIZE = 500
       for (let i = 0; i < updates.length; i += BATCH_SIZE) {
         const batch = updates.slice(i, i + BATCH_SIZE)
 
-        // Group by station for efficient updates
         const stationGroups: Record<string, number[]> = {}
         batch.forEach(u => {
           if (!stationGroups[u.station]) stationGroups[u.station] = []
@@ -272,7 +294,7 @@ export async function POST(request: NextRequest) {
         )
 
         const results = await Promise.all(promises)
-        results.forEach((result, idx) => {
+        results.forEach((result) => {
           if (result.error) {
             console.error(`[Ijazah] Station assign batch error:`, result.error)
           }
@@ -280,23 +302,41 @@ export async function POST(request: NextRequest) {
       }
 
       // Build summary
-      const stationSummary: Record<string, { from: number; to: number; count: number }> = {}
+      const stationSummary: Record<string, { from: number | null; to: number | null; count: number; type: string }> = {}
+
+      // Initialize all stations so they appear even if empty
+      stationLabels.forEach((label, idx) => {
+        const isLast = idx === stationCount - 1 && stationCount > 1
+        stationSummary[label] = { from: null, to: null, count: 0, type: isLast ? 'not-ready' : 'ready' }
+      })
+
       updates.forEach(u => {
         if (!stationSummary[u.station]) {
-          stationSummary[u.station] = { from: u.id, to: u.id, count: 0 }
+          stationSummary[u.station] = { from: null, to: null, count: 0, type: 'ready' }
         }
-        stationSummary[u.station].to = u.id
+        if (stationSummary[u.station].from === null || u.id < stationSummary[u.station].from!) {
+          stationSummary[u.station].from = u.id
+        }
+        if (stationSummary[u.station].to === null || u.id > stationSummary[u.station].to!) {
+          stationSummary[u.station].to = u.id
+        }
         stationSummary[u.station].count++
       })
 
-      console.log(`[Ijazah] Assigned ${totalRecords} records across ${stationCount} stations`)
+      console.log(
+        `[Ijazah] Assigned ${allRecords.length} records across ${stationCount} stations ` +
+        `(${readyRecords.length} ready → ${stationCount > 1 ? stationCount - 1 : 1} station(s), ` +
+        `${notReadyRecords.length} not-ready → ${lastStationLabel})`
+      )
 
       return NextResponse.json({
         success: true,
-        message: `Successfully assigned ${totalRecords} ijazahs across ${stationCount} station${stationCount > 1 ? 's' : ''}.`,
+        message: `Successfully assigned ${allRecords.length} ijazahs across ${stationCount} station${stationCount > 1 ? 's' : ''}.`,
         stationSummary,
-        totalRecords,
-        perStation,
+        totalRecords: allRecords.length,
+        readyCount: readyRecords.length,
+        notReadyCount: notReadyRecords.length,
+        lastStation: stationCount > 1 ? lastStationLabel : null,
       })
     }
 

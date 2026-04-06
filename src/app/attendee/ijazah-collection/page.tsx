@@ -2,19 +2,19 @@
 
 import { useState, useRef } from 'react'
 
-type IjazahResult = {
+type IjazahRecord = {
   ID: number
   english_name: string | null
   arabic_name: string | null
   collection_station: string | null
-  received: boolean
 }
 
 export default function IjazahCollection() {
   const [idNumber, setIdNumber] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [result, setResult] = useState<{ stationsReady: boolean; record: IjazahResult } | null>(null)
+  const [record, setRecord] = useState<IjazahRecord | null>(null)
+  const [lastStation, setLastStation] = useState<string | null>(null)
 
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -24,7 +24,8 @@ export default function IjazahCollection() {
 
     setLoading(true)
     setError('')
-    setResult(null)
+    setRecord(null)
+    setLastStation(null)
 
     try {
       const response = await fetch(`/api/attendee/ijazah?idNumber=${encodeURIComponent(idNumber.trim())}`)
@@ -34,7 +35,8 @@ export default function IjazahCollection() {
         throw new Error(data.error || 'Something went wrong.')
       }
 
-      setResult({ stationsReady: data.stationsReady, record: data.record })
+      setRecord(data.record)
+      setLastStation(data.lastStation || null)
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.')
     } finally {
@@ -43,7 +45,8 @@ export default function IjazahCollection() {
   }
 
   const handleReset = () => {
-    setResult(null)
+    setRecord(null)
+    setLastStation(null)
     setError('')
     setIdNumber('')
     setTimeout(() => inputRef.current?.focus(), 100)
@@ -52,24 +55,26 @@ export default function IjazahCollection() {
   // ==========================================
   // RESULT VIEW
   // ==========================================
-  if (result) {
-    const { record, stationsReady } = result
-
-    return (
-      <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4 md:p-8">
-        <div className="w-full max-w-md">
-
-          {/* Already collected */}
-          {record.received && (
-            <div className="bg-white rounded-xl shadow-md border-2 border-green-400 overflow-hidden animate-in fade-in zoom-in">
-              <div className="bg-green-600 p-6 text-center text-white">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+  if (record) {
+    // Record found in table with a station assigned — normal collection
+    if (record.collection_station) {
+      return (
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4 md:p-8">
+          <div className="w-full max-w-md">
+            <div className="bg-white rounded-xl shadow-md border-2 border-brand-burgundy overflow-hidden animate-in fade-in zoom-in">
+              <div className="bg-brand-burgundy p-6 text-center text-brand-gold">
+                <div className="w-16 h-16 bg-brand-gold/20 rounded-full flex items-center justify-center mx-auto mb-3">
                   <svg className="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                    />
                   </svg>
                 </div>
-                <h1 className="text-2xl font-bold">Already Collected</h1>
-                <p className="text-green-100 text-sm mt-1">Your Ijazah has been marked as received</p>
+                <h1 className="text-2xl font-bold">Your Ijazah is Ready</h1>
+                <p className="text-brand-gold-light text-sm mt-1">Please collect from the station below</p>
               </div>
 
               <div className="p-6 text-center space-y-4">
@@ -90,9 +95,15 @@ export default function IjazahCollection() {
                   </div>
                 )}
 
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-                  <p className="text-green-800 font-medium text-sm">
-                    Records show your Ijazah has already been collected. If you believe this is an error, please speak to a volunteer at the collection desk.
+                <div className="bg-brand-burgundy rounded-xl p-6 mt-4 shadow-lg">
+                  <p className="text-brand-gold-light text-xs font-bold uppercase tracking-widest mb-2">Go to</p>
+                  <p className="text-5xl font-black text-brand-gold mb-2">{record.collection_station}</p>
+                  <p className="text-brand-gold-light text-sm font-medium">Please bring your ID for verification</p>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
+                  <p className="text-blue-800 text-sm font-medium">
+                    Present this screen or your ID number to the volunteer at <strong>{record.collection_station}</strong> to receive your Ijazah certificate.
                   </p>
                 </div>
 
@@ -104,10 +115,16 @@ export default function IjazahCollection() {
                 </button>
               </div>
             </div>
-          )}
+          </div>
+        </div>
+      )
+    }
 
-          {/* Stations not yet assigned */}
-          {!record.received && !stationsReady && (
+    // Record found but no station assigned yet — stations not configured
+    if (!record.collection_station && !lastStation) {
+      return (
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4 md:p-8">
+          <div className="w-full max-w-md">
             <div className="bg-white rounded-xl shadow-md border-2 border-brand-burgundy overflow-hidden animate-in fade-in zoom-in">
               <div className="bg-brand-burgundy p-6 text-center text-brand-gold">
                 <div className="w-16 h-16 bg-brand-gold/20 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -116,7 +133,7 @@ export default function IjazahCollection() {
                   </svg>
                 </div>
                 <h1 className="text-2xl font-bold">Ijazah Found</h1>
-                <p className="text-brand-gold-light text-sm mt-1">Stations have not yet been assigned</p>
+                <p className="text-brand-gold-light text-sm mt-1">Collection stations are not yet assigned</p>
               </div>
 
               <div className="p-6 text-center space-y-4">
@@ -157,19 +174,25 @@ export default function IjazahCollection() {
                 </button>
               </div>
             </div>
-          )}
+          </div>
+        </div>
+      )
+    }
 
-          {/* Station assigned — ready to collect */}
-          {!record.received && stationsReady && (
-            <div className="bg-white rounded-xl shadow-md border-2 border-brand-burgundy overflow-hidden animate-in fade-in zoom-in">
-              <div className="bg-brand-burgundy p-6 text-center text-brand-gold">
-                <div className="w-16 h-16 bg-brand-gold/20 rounded-full flex items-center justify-center mx-auto mb-3">
+    // Record found, no station assigned, but stations ARE active — direct to last station
+    if (!record.collection_station && lastStation) {
+      return (
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4 md:p-8">
+          <div className="w-full max-w-md">
+            <div className="bg-white rounded-xl shadow-md border-2 border-amber-400 overflow-hidden animate-in fade-in zoom-in">
+              <div className="bg-amber-500 p-6 text-center text-white">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
                   <svg className="w-9 h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h1 className="text-2xl font-bold">Your Ijazah is Ready</h1>
-                <p className="text-brand-gold-light text-sm mt-1">Please collect from the station below</p>
+                <h1 className="text-2xl font-bold">Ijazah Not Yet Ready</h1>
+                <p className="text-amber-100 text-sm mt-1">Your certificate is being prepared</p>
               </div>
 
               <div className="p-6 text-center space-y-4">
@@ -190,22 +213,15 @@ export default function IjazahCollection() {
                   </div>
                 )}
 
-                {/* THE MAIN STATION CARD */}
-                <div className="bg-brand-burgundy rounded-xl p-6 mt-4 shadow-lg">
-                  <p className="text-brand-gold-light text-xs font-bold uppercase tracking-widest mb-2">
-                    Go to
-                  </p>
-                  <p className="text-5xl font-black text-brand-gold mb-2">
-                    {record.collection_station}
-                  </p>
-                  <p className="text-brand-gold-light text-sm font-medium">
-                    Please bring your ID for verification
-                  </p>
+                <div className="bg-amber-500 rounded-xl p-6 mt-4 shadow-lg">
+                  <p className="text-amber-100 text-xs font-bold uppercase tracking-widest mb-2">Please go to</p>
+                  <p className="text-5xl font-black text-white mb-2">{lastStation}</p>
+                  <p className="text-amber-100 text-sm font-medium">A volunteer will assist you</p>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
-                  <p className="text-blue-800 text-sm font-medium">
-                    Present this screen or your ID number to the volunteer at <strong>{record.collection_station}</strong> to receive your Ijazah certificate.
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-2">
+                  <p className="text-amber-800 text-sm font-medium">
+                    Your Ijazah is not yet ready for collection. Please go to <strong>{lastStation}</strong> where a volunteer will help you with your query.
                   </p>
                 </div>
 
@@ -217,11 +233,10 @@ export default function IjazahCollection() {
                 </button>
               </div>
             </div>
-          )}
-
+          </div>
         </div>
-      </div>
-    )
+      )
+    }
   }
 
   // ==========================================
