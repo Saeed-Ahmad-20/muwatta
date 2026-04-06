@@ -11,21 +11,42 @@ const MICRO_STATES: Record<string, [number, number]> = {
   'Luxembourg': [6.1296, 49.8153]
 }
 
+type SplitCounts = {
+  Male: number
+  Female: number
+  'Mother & Baby': number
+  Other: number
+}
+
+type PendingStats = {
+  am: number
+  pm: number
+  amSplits: SplitCounts
+  pmSplits: SplitCounts
+  totalUnique: number
+}
+
+type DayStats = {
+  am: number
+  pm: number
+  totalUnique: number
+  splits: SplitCounts
+  amSplits: SplitCounts
+  pmSplits: SplitCounts
+  daySplits: SplitCounts
+  pending: PendingStats
+}
+
 type StatsData = {
   totalAttendees: number
   arrivedAttendees: number
   countriesCount: number
   citiesCount: number
   overallSplits: Record<string, number>
-  countryBreakdown: Record<string, number> 
-  cityBreakdown: Record<string, number> 
+  countryBreakdown: Record<string, number>
+  cityBreakdown: Record<string, number>
   countryCityBreakdown: Record<string, Record<string, number>>
-  attendanceBreakdown: Record<string, { 
-    am: number, 
-    pm: number, 
-    totalUnique: number, 
-    splits: Record<string, number> 
-  }>
+  attendanceBreakdown: Record<string, DayStats>
 }
 
 const EVENT_DATES = [
@@ -35,24 +56,78 @@ const EVENT_DATES = [
   { id: '2026-04-07', label: 'Day 4 (Apr 7)' },
 ]
 
+const EMPTY_SPLITS: SplitCounts = { Male: 0, Female: 0, 'Mother & Baby': 0, Other: 0 }
+const EMPTY_PENDING: PendingStats = { am: 0, pm: 0, amSplits: EMPTY_SPLITS, pmSplits: EMPTY_SPLITS, totalUnique: 0 }
+const EMPTY_DAY: DayStats = { am: 0, pm: 0, totalUnique: 0, splits: EMPTY_SPLITS, amSplits: EMPTY_SPLITS, pmSplits: EMPTY_SPLITS, daySplits: EMPTY_SPLITS, pending: EMPTY_PENDING }
+
+// ==========================================
+// REUSABLE: Split Breakdown Row
+// ==========================================
+function SplitRow({ label, splits, colorScheme }: { label: string; splits: SplitCounts; colorScheme: 'blue' | 'amber' | 'gray' }) {
+  const colors = {
+    blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', label: 'text-blue-700', accent: 'border-blue-400' },
+    amber: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', label: 'text-amber-700', accent: 'border-amber-400' },
+    gray: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700', label: 'text-gray-600', accent: 'border-gray-400' },
+  }
+  const c = colors[colorScheme]
+  const total = (splits['Male'] || 0) + (splits['Female'] || 0) + (splits['Mother & Baby'] || 0) + (splits['Other'] || 0)
+
+  return (
+    <div className={`${c.bg} rounded-lg p-3 border ${c.border}`}>
+      <div className="flex justify-between items-center mb-2.5">
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${c.label}`}>{label}</span>
+        <span className={`text-xs font-black ${c.text}`}>{total.toLocaleString()} total</span>
+      </div>
+      <div className="space-y-1.5">
+        <div className="flex justify-between items-center text-xs">
+          <span className="font-semibold text-gray-600 flex items-center">
+            <span className="w-2 h-2 rounded-full bg-blue-500 mr-1.5"></span>Brothers
+          </span>
+          <span className="font-bold text-gray-800">{(splits['Male'] || 0).toLocaleString()}</span>
+        </div>
+        <div className="flex justify-between items-center text-xs">
+          <span className="font-semibold text-gray-600 flex items-center">
+            <span className="w-2 h-2 rounded-full bg-pink-500 mr-1.5"></span>Sisters
+          </span>
+          <span className="font-bold text-gray-800">{(splits['Female'] || 0).toLocaleString()}</span>
+        </div>
+        <div className="flex justify-between items-center text-xs">
+          <span className="font-semibold text-gray-600 flex items-center">
+            <span className="w-2 h-2 rounded-full bg-purple-500 mr-1.5"></span>Mother & Baby
+          </span>
+          <span className="font-bold text-gray-800">{(splits['Mother & Baby'] || 0).toLocaleString()}</span>
+        </div>
+        {(splits['Other'] || 0) > 0 && (
+          <div className="flex justify-between items-center text-xs">
+            <span className="font-semibold text-gray-600 flex items-center">
+              <span className="w-2 h-2 rounded-full bg-gray-400 mr-1.5"></span>Other
+            </span>
+            <span className="font-bold text-gray-800">{(splits['Other'] || 0).toLocaleString()}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ==========================================
 // THE INTERACTIVE 2D WORLD MAP
 // ==========================================
-function WorldMap({ 
-  countryBreakdown, 
-  countryCityBreakdown 
-}: { 
+function WorldMap({
+  countryBreakdown,
+  countryCityBreakdown
+}: {
   countryBreakdown: Record<string, number>
   countryCityBreakdown: Record<string, Record<string, number>>
 }) {
   const [center, setCenter] = useState<[number, number]>([0, 20])
   const [scale, setScale] = useState(130)
-  
+
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState([0, 0])
   const [tooltip, setTooltip] = useState({ show: false, content: '', x: 0, y: 0 })
-  
-  const [selectedCountryInfo, setSelectedCountryInfo] = useState<{name: string, count: number, cities: Record<string, number>} | null>(null)
+
+  const [selectedCountryInfo, setSelectedCountryInfo] = useState<{ name: string, count: number, cities: Record<string, number> } | null>(null)
 
   const mapContainerRef = useRef<HTMLDivElement>(null)
 
@@ -67,7 +142,7 @@ function WorldMap({
     if (!element) return
 
     const handleNativeWheel = (e: WheelEvent) => {
-      e.preventDefault() 
+      e.preventDefault()
       setScale(prev => Math.min(Math.max(prev - e.deltaY * 0.5, 100), 800))
     }
 
@@ -79,13 +154,13 @@ function WorldMap({
     if (isDragging) {
       const dx = clientX - dragStart[0]
       const dy = clientY - dragStart[1]
-      
+
       const panFactor = 100 / scale
       setCenter(prev => [
         Math.max(-180, Math.min(180, prev[0] - dx * panFactor)),
         Math.max(-80, Math.min(80, prev[1] + dy * panFactor))
       ])
-      
+
       setDragStart([clientX, clientY])
       setTooltip(prev => ({ ...prev, show: false }))
     }
@@ -131,13 +206,13 @@ function WorldMap({
       const c = dbCountry.toLowerCase()
       if (name === 'united kingdom' && ['england', 'scotland', 'wales', 'northern ireland', 'isle of man', 'uk', 'united kingdom'].includes(c)) {
         count += dbCount; addCities(dbCountry)
-      } 
+      }
       else if (name === 'united states of america' && ['usa', 'united states', 'us'].includes(c)) {
         count += dbCount; addCities(dbCountry)
-      } 
+      }
       else if (name === 'united arab emirates' && ['uae', 'united arab emirates'].includes(c)) {
         count += dbCount; addCities(dbCountry)
-      } 
+      }
       else if ((name === 'israel' || name === 'palestine') && c === 'palestine') {
         count += dbCount; addCities(dbCountry)
       }
@@ -150,10 +225,10 @@ function WorldMap({
 
   const getColor = (count: number) => {
     if (count === 0) return "#E2E8F0"
-    if (count <= 2) return "#eab3b3"  
-    if (count <= 10) return "#c76464" 
-    if (count <= 50) return "#a62d2d" 
-    return "#800000"                  
+    if (count <= 2) return "#eab3b3"
+    if (count <= 10) return "#c76464"
+    if (count <= 50) return "#a62d2d"
+    return "#800000"
   }
 
   return (
@@ -167,9 +242,9 @@ function WorldMap({
           Scroll to Zoom • Drag to Pan • Click for Details
         </div>
       </div>
-      
-      <div 
-        ref={mapContainerRef} 
+
+      <div
+        ref={mapContainerRef}
         className={`w-full h-[400px] flex justify-center items-center relative overflow-hidden rounded-xl bg-[#f8fafc] border border-gray-100 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
         style={{ touchAction: 'none' }}
         onMouseDown={handleMouseDown}
@@ -180,10 +255,10 @@ function WorldMap({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleInteractionEnd}
       >
-        <ComposableMap 
+        <ComposableMap
           projection="geoMercator"
           projectionConfig={{ center: center, scale: scale }}
-          width={800} 
+          width={800}
           height={400}
           style={{ width: "100%", height: "100%" }}
         >
@@ -192,32 +267,32 @@ function WorldMap({
               geographies.map((geo) => {
                 const { count, cities } = getCountryData(geo.properties.name)
                 const fillColor = getColor(count)
-                
+
                 let displayName = geo.properties.name
                 if (displayName.toLowerCase() === 'israel') {
                   displayName = 'Palestine'
                 }
 
                 return (
-                  <Geography 
-                    key={geo.rsmKey} 
-                    geography={geo} 
+                  <Geography
+                    key={geo.rsmKey}
+                    geography={geo}
                     stroke="#ffffff"
                     strokeWidth={0.5}
                     style={{
-                      default: { 
-                        fill: fillColor, 
-                        outline: "none", 
-                        transition: "fill 250ms" 
+                      default: {
+                        fill: fillColor,
+                        outline: "none",
+                        transition: "fill 250ms"
                       },
-                      hover: { 
-                        fill: count > 0 && !isDragging ? "#D4AF37" : fillColor, 
+                      hover: {
+                        fill: count > 0 && !isDragging ? "#D4AF37" : fillColor,
                         outline: "none",
                         cursor: count > 0 ? "pointer" : "default"
-                      }, 
-                      pressed: { 
-                        fill: count > 0 ? "#D4AF37" : fillColor, 
-                        outline: "none" 
+                      },
+                      pressed: {
+                        fill: count > 0 ? "#D4AF37" : fillColor,
+                        outline: "none"
                       },
                     }}
                     onMouseEnter={() => {
@@ -245,10 +320,10 @@ function WorldMap({
 
             return (
               <Marker key={name} coordinates={coords}>
-                <circle 
-                  r={6} 
-                  fill={fillColor} 
-                  stroke="#ffffff" 
+                <circle
+                  r={6}
+                  fill={fillColor}
+                  stroke="#ffffff"
                   strokeWidth={1.5}
                   style={{ cursor: "pointer", transition: "fill 250ms" }}
                   onMouseEnter={() => {
@@ -270,7 +345,7 @@ function WorldMap({
         </ComposableMap>
 
         {tooltip.show && !isDragging && (
-          <div 
+          <div
             className="fixed bg-gray-900 text-white text-xs font-bold px-3 py-2 rounded shadow-xl pointer-events-none z-50 transition-opacity"
             style={{ top: tooltip.y - 40, left: tooltip.x + 10 }}
           >
@@ -278,7 +353,7 @@ function WorldMap({
           </div>
         )}
       </div>
-      
+
       <div className="flex justify-center items-center gap-4 mt-6 text-xs font-bold text-gray-500 flex-wrap">
         <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#E2E8F0] mr-2 border border-gray-300"></span>0</div>
         <div className="flex items-center"><span className="w-3 h-3 rounded-full bg-[#eab3b3] mr-2"></span>1 - 2</div>
@@ -288,11 +363,11 @@ function WorldMap({
       </div>
 
       {selectedCountryInfo && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 backdrop-blur-sm"
           onClick={() => setSelectedCountryInfo(null)}
         >
-          <div 
+          <div
             className="bg-white rounded-xl shadow-2xl w-full max-w-sm max-h-[70vh] overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-brand-burgundy flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
@@ -301,20 +376,20 @@ function WorldMap({
                 <h2 className="text-lg font-bold leading-tight">{selectedCountryInfo.name}</h2>
                 <p className="text-xs font-medium text-brand-gold-light opacity-80">{selectedCountryInfo.count} Total Attendees</p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedCountryInfo(null)}
                 className="text-brand-gold hover:text-white text-2xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-brand-burgundy-dark transition-colors"
               >
                 &times;
               </button>
             </div>
-            
+
             <div className="overflow-y-auto flex-1 p-2">
               <table className="w-full text-left border-collapse">
                 <tbody>
                   {Object.entries(selectedCountryInfo.cities)
-                    .sort((a, b) => b[1] - a[1]) 
-                    .map(([city, count], idx) => (
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([city, count]) => (
                       <tr key={city} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                         <td className="py-2.5 px-4 text-sm font-bold text-gray-700">
                           {city}
@@ -323,7 +398,7 @@ function WorldMap({
                           {count.toLocaleString()}
                         </td>
                       </tr>
-                  ))}
+                    ))}
                 </tbody>
               </table>
             </div>
@@ -342,7 +417,7 @@ export default function InsightsDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
-  
+
   const [showCountriesModal, setShowCountriesModal] = useState(false)
 
   useEffect(() => {
@@ -392,7 +467,7 @@ export default function InsightsDashboard() {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 relative">
-      
+
       <div className="text-center md:text-left flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-black text-brand-burgundy mb-2 uppercase tracking-wide">Event Insights</h1>
@@ -415,7 +490,7 @@ export default function InsightsDashboard() {
           <span className="text-sm font-bold uppercase tracking-widest text-gray-500">On-Site Arrivals</span>
         </div>
 
-        <div 
+        <div
           onClick={() => setShowCountriesModal(true)}
           className="bg-white p-6 rounded-2xl border-2 border-brand-burgundy/10 shadow-sm flex flex-col justify-center items-center text-center cursor-pointer hover:border-brand-burgundy/30 hover:bg-brand-burgundy/5 transition-all group"
         >
@@ -435,7 +510,7 @@ export default function InsightsDashboard() {
           <svg className="w-6 h-6 mr-2 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
           Overall Attendee Demographics
         </h2>
-        
+
         <div className="w-full h-8 flex rounded-full overflow-hidden shadow-inner mb-8">
           <div className="bg-blue-500 h-full transition-all duration-1000 flex items-center justify-center text-xs font-bold text-white" style={{ width: `${malePct}%` }}>{malePct > 5 ? `${malePct}%` : ''}</div>
           <div className="bg-pink-500 h-full transition-all duration-1000 flex items-center justify-center text-xs font-bold text-white" style={{ width: `${femalePct}%` }}>{femalePct > 5 ? `${femalePct}%` : ''}</div>
@@ -458,11 +533,14 @@ export default function InsightsDashboard() {
         </div>
       </div>
 
-      <WorldMap 
-        countryBreakdown={stats.countryBreakdown} 
-        countryCityBreakdown={stats.countryCityBreakdown} 
+      <WorldMap
+        countryBreakdown={stats.countryBreakdown}
+        countryCityBreakdown={stats.countryCityBreakdown}
       />
 
+      {/* ==========================================
+          SESSION ATTENDANCE LOGS
+          ========================================== */}
       <div className="bg-white rounded-xl border border-brand-burgundy shadow-sm overflow-hidden">
         <div className="bg-brand-burgundy p-6 text-brand-gold flex justify-between items-center">
           <h2 className="text-xl font-bold flex items-center">
@@ -471,76 +549,174 @@ export default function InsightsDashboard() {
           </h2>
           <span className="text-sm font-medium bg-brand-burgundy-dark px-3 py-1 rounded-full hidden md:block">Click a day to view splits</span>
         </div>
-        
+
         <div className="p-6 md:p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {EVENT_DATES.map((date) => {
-              const dayStats = stats.attendanceBreakdown[date.id] || { am: 0, pm: 0, totalUnique: 0, splits: {} }
+              const dayStats = stats.attendanceBreakdown[date.id] || EMPTY_DAY
+              const amSplits = dayStats.amSplits || EMPTY_SPLITS
+              const pmSplits = dayStats.pmSplits || EMPTY_SPLITS
+              const daySplits = dayStats.daySplits || dayStats.splits || EMPTY_SPLITS
+              const pending = dayStats.pending || EMPTY_PENDING
+              const pendingAmSplits = pending.amSplits || EMPTY_SPLITS
+              const pendingPmSplits = pending.pmSplits || EMPTY_SPLITS
+
               const amPercentage = stats.totalAttendees > 0 ? Math.round((dayStats.am / stats.totalAttendees) * 100) : 0
               const pmPercentage = stats.totalAttendees > 0 ? Math.round((dayStats.pm / stats.totalAttendees) * 100) : 0
-              
+
+              const hasPending = pending.am > 0 || pending.pm > 0
               const isSelected = selectedDay === date.id
 
               return (
-                <div 
-                  key={date.id} 
+                <div
+                  key={date.id}
                   onClick={() => setSelectedDay(isSelected ? null : date.id)}
                   className={`rounded-lg p-5 flex flex-col transition-all cursor-pointer ${
-                    isSelected 
-                      ? 'bg-white border-2 border-brand-burgundy shadow-md ring-1 ring-brand-burgundy' 
+                    isSelected
+                      ? 'bg-white border-2 border-brand-burgundy shadow-md ring-1 ring-brand-burgundy'
                       : 'bg-gray-50 border border-gray-200 hover:border-brand-burgundy/50 hover:bg-white'
                   }`}
                 >
                   <h3 className="font-bold text-brand-burgundy mb-4 text-center border-b border-gray-200 pb-2">{date.label}</h3>
-                  
+
                   <div className="space-y-6 flex-1 flex flex-col justify-center">
-                    
+
+                    {/* AM Session */}
                     <div>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">AM Session</span>
-                        <span className="text-sm font-black text-gray-900">{dayStats.am.toLocaleString()}</span>
+                        <div className="flex items-center gap-2">
+                          {pending.am > 0 && (
+                            <span className="text-[10px] font-bold text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">
+                              +{pending.am} pending
+                            </span>
+                          )}
+                          <span className="text-sm font-black text-gray-900">{dayStats.am.toLocaleString()}</span>
+                        </div>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div className="bg-brand-burgundy h-2.5 rounded-full" style={{ width: `${amPercentage}%` }}></div>
+                        <div className="bg-brand-burgundy h-2.5 rounded-full transition-all duration-500" style={{ width: `${amPercentage}%` }}></div>
                       </div>
                       <span className="text-[10px] text-gray-400 font-bold block mt-1 text-right">{amPercentage}% of Capacity</span>
                     </div>
 
+                    {/* PM Session */}
                     <div>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">PM Session</span>
-                        <span className="text-sm font-black text-gray-900">{dayStats.pm.toLocaleString()}</span>
+                        <div className="flex items-center gap-2">
+                          {pending.pm > 0 && (
+                            <span className="text-[10px] font-bold text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">
+                              +{pending.pm} pending
+                            </span>
+                          )}
+                          <span className="text-sm font-black text-gray-900">{dayStats.pm.toLocaleString()}</span>
+                        </div>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div className="bg-brand-gold h-2.5 rounded-full" style={{ width: `${pmPercentage}%` }}></div>
+                        <div className="bg-brand-gold h-2.5 rounded-full transition-all duration-500" style={{ width: `${pmPercentage}%` }}></div>
                       </div>
                       <span className="text-[10px] text-gray-400 font-bold block mt-1 text-right">{pmPercentage}% of Capacity</span>
                     </div>
 
+                    {/* Expanded: Per-Session Splits */}
                     {isSelected && (
-                      <div className="mt-4 pt-4 border-t border-gray-200 animate-in fade-in slide-in-from-top-2">
-                        <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 text-center">Daily Admission Split</h4>
-                        
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="font-bold text-gray-700">Brothers</span>
-                            <span className="bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded border border-blue-100">{dayStats.splits['Male'] || 0}</span>
+                      <div className="mt-2 pt-4 border-t border-gray-200 animate-in fade-in slide-in-from-top-2 space-y-3">
+
+                        {/* AM Split */}
+                        <SplitRow label={`AM Session Split (${dayStats.am})`} splits={amSplits} colorScheme="blue" />
+
+                        {/* PM Split */}
+                        <SplitRow label={`PM Session Split (${dayStats.pm})`} splits={pmSplits} colorScheme="amber" />
+
+                        {/* Daily Unique Split */}
+                        <SplitRow label={`Unique Daily Attendees (${dayStats.totalUnique})`} splits={daySplits} colorScheme="gray" />
+
+                        {/* Pending Section */}
+                        {hasPending && (
+                          <div className="mt-2 pt-3 border-t border-dashed border-yellow-300">
+                            <div className="flex items-center gap-1.5 mb-3 justify-center">
+                              <svg className="w-3.5 h-3.5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-[10px] font-bold text-yellow-600 uppercase tracking-wider">
+                                Pending Approval ({pending.totalUnique} attendee{pending.totalUnique !== 1 ? 's' : ''})
+                              </span>
+                            </div>
+
+                            {pending.am > 0 && (
+                              <div className="mb-2">
+                                <div className="bg-yellow-50 rounded-lg p-2.5 border border-yellow-200">
+                                  <div className="flex justify-between items-center mb-1.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-yellow-700">Pending AM ({pending.am})</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {(pendingAmSplits['Male'] || 0) > 0 && (
+                                      <div className="flex justify-between items-center text-[11px]">
+                                        <span className="font-semibold text-yellow-700">Brothers</span>
+                                        <span className="font-bold text-yellow-800">{pendingAmSplits['Male']}</span>
+                                      </div>
+                                    )}
+                                    {(pendingAmSplits['Female'] || 0) > 0 && (
+                                      <div className="flex justify-between items-center text-[11px]">
+                                        <span className="font-semibold text-yellow-700">Sisters</span>
+                                        <span className="font-bold text-yellow-800">{pendingAmSplits['Female']}</span>
+                                      </div>
+                                    )}
+                                    {(pendingAmSplits['Mother & Baby'] || 0) > 0 && (
+                                      <div className="flex justify-between items-center text-[11px]">
+                                        <span className="font-semibold text-yellow-700">Mother & Baby</span>
+                                        <span className="font-bold text-yellow-800">{pendingAmSplits['Mother & Baby']}</span>
+                                      </div>
+                                    )}
+                                    {(pendingAmSplits['Other'] || 0) > 0 && (
+                                      <div className="flex justify-between items-center text-[11px]">
+                                        <span className="font-semibold text-yellow-700">Other</span>
+                                        <span className="font-bold text-yellow-800">{pendingAmSplits['Other']}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {pending.pm > 0 && (
+                              <div>
+                                <div className="bg-yellow-50 rounded-lg p-2.5 border border-yellow-200">
+                                  <div className="flex justify-between items-center mb-1.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-yellow-700">Pending PM ({pending.pm})</span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {(pendingPmSplits['Male'] || 0) > 0 && (
+                                      <div className="flex justify-between items-center text-[11px]">
+                                        <span className="font-semibold text-yellow-700">Brothers</span>
+                                        <span className="font-bold text-yellow-800">{pendingPmSplits['Male']}</span>
+                                      </div>
+                                    )}
+                                    {(pendingPmSplits['Female'] || 0) > 0 && (
+                                      <div className="flex justify-between items-center text-[11px]">
+                                        <span className="font-semibold text-yellow-700">Sisters</span>
+                                        <span className="font-bold text-yellow-800">{pendingPmSplits['Female']}</span>
+                                      </div>
+                                    )}
+                                    {(pendingPmSplits['Mother & Baby'] || 0) > 0 && (
+                                      <div className="flex justify-between items-center text-[11px]">
+                                        <span className="font-semibold text-yellow-700">Mother & Baby</span>
+                                        <span className="font-bold text-yellow-800">{pendingPmSplits['Mother & Baby']}</span>
+                                      </div>
+                                    )}
+                                    {(pendingPmSplits['Other'] || 0) > 0 && (
+                                      <div className="flex justify-between items-center text-[11px]">
+                                        <span className="font-semibold text-yellow-700">Other</span>
+                                        <span className="font-bold text-yellow-800">{pendingPmSplits['Other']}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="font-bold text-gray-700">Sisters</span>
-                            <span className="bg-pink-50 text-pink-700 font-bold px-2 py-0.5 rounded border border-pink-100">{dayStats.splits['Female'] || 0}</span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="font-bold text-gray-700">Mother & Baby</span>
-                            <span className="bg-purple-50 text-purple-700 font-bold px-2 py-0.5 rounded border border-purple-100">{dayStats.splits['Mother & Baby'] || 0}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="mt-4 text-center">
-                          <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Total Attendees: {dayStats.totalUnique}</span>
-                        </div>
+                        )}
                       </div>
                     )}
 
@@ -552,12 +728,13 @@ export default function InsightsDashboard() {
         </div>
       </div>
 
+      {/* Countries Modal */}
       {showCountriesModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
           onClick={() => setShowCountriesModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden animate-in fade-in zoom-in duration-200 border-2 border-brand-burgundy flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
@@ -566,19 +743,19 @@ export default function InsightsDashboard() {
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 Country Breakdown
               </h2>
-              <button 
+              <button
                 onClick={() => setShowCountriesModal(false)}
                 className="text-brand-gold hover:text-white text-3xl leading-none bg-brand-burgundy-dark hover:bg-brand-burgundy h-8 w-8 rounded-full flex items-center justify-center transition-colors"
               >
                 &times;
               </button>
             </div>
-            
+
             <div className="overflow-y-auto flex-1 p-2">
               <table className="w-full text-left border-collapse">
                 <tbody>
                   {Object.entries(stats.countryBreakdown || {})
-                    .sort((a, b) => b[1] - a[1]) 
+                    .sort((a, b) => b[1] - a[1])
                     .map(([country, count], idx) => (
                       <tr key={country} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors">
                         <td className="py-3 px-4 text-sm font-bold text-gray-700 flex items-center">
@@ -589,7 +766,7 @@ export default function InsightsDashboard() {
                           {count.toLocaleString()}
                         </td>
                       </tr>
-                  ))}
+                    ))}
                 </tbody>
               </table>
             </div>
