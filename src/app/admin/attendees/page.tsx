@@ -29,6 +29,8 @@ type AttendanceRecord = {
   session_type: 'am' | 'pm'
 }
 
+type SessionStatus = 'confirmed' | 'pending' | false
+
 const EVENT_DATES = [
   '2026-04-04',
   '2026-04-05',
@@ -48,9 +50,36 @@ function renderDetailItem(label: string, value: string | null, isRtl = false) {
   )
 }
 
+function renderSessionStatus(status: SessionStatus) {
+  if (status === 'confirmed') {
+    return (
+      <div className="w-5 h-5 rounded flex items-center justify-center bg-green-100 border-2 border-green-500">
+        <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+    )
+  }
+
+  if (status === 'pending') {
+    return (
+      <div className="w-5 h-5 rounded flex items-center justify-center bg-yellow-50 border-2 border-yellow-400">
+        <svg className="w-3 h-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-5 h-5 rounded bg-gray-100 border border-gray-200"></div>
+  )
+}
+
 export default function AttendanceTracker() {
   const [attendees, setAttendees] = useState<Attendee[]>([])
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [attendanceRequests, setAttendanceRequests] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [selectedAttendee, setSelectedAttendee] = useState<Attendee | null>(null) 
@@ -83,6 +112,7 @@ export default function AttendanceTracker() {
 
       setAttendees(result.attendees)
       setAttendanceRecords(result.records)
+      setAttendanceRequests(result.requests || [])
     } catch (error) {
       console.error('Error fetching data:', error)
       alert('Failed to load attendees database.')
@@ -114,10 +144,18 @@ export default function AttendanceTracker() {
     setSyncing(false)
   }
 
-  const hasAttended = (attendeeId: number, date: string, session: 'am' | 'pm') => {
-    return attendanceRecords.some(
+  const getSessionStatus = (attendeeId: number, date: string, session: 'am' | 'pm'): SessionStatus => {
+    const isConfirmed = attendanceRecords.some(
       record => record.attendee_id === attendeeId && record.event_date === date && record.session_type === session
     )
+    if (isConfirmed) return 'confirmed'
+
+    const isPending = attendanceRequests.some(
+      record => record.attendee_id === attendeeId && record.event_date === date && record.session_type === session
+    )
+    if (isPending) return 'pending'
+
+    return false
   }
 
   // --- PROFILE EDITING LOGIC ---
@@ -158,6 +196,11 @@ export default function AttendanceTracker() {
     if (!selectedAttendee) return []
     return attendanceRecords.filter(r => r.attendee_id === selectedAttendee.id)
   }, [selectedAttendee, attendanceRecords])
+
+  const currentAttendeeRequests = useMemo(() => {
+    if (!selectedAttendee) return []
+    return attendanceRequests.filter(r => r.attendee_id === selectedAttendee.id)
+  }, [selectedAttendee, attendanceRequests])
 
   useEffect(() => {
     if (modalMode === 'editAttendance' && selectedAttendee) {
@@ -242,7 +285,7 @@ export default function AttendanceTracker() {
       })
 
       await Promise.all(promises)
-      await fetchData() // Re-fetch to get accurate IDs for new records
+      await fetchData()
       alert("Attendance records successfully updated!")
       setModalMode('view')
 
@@ -310,7 +353,7 @@ export default function AttendanceTracker() {
           </div>
         </div>
 
-        <div className="mb-6 relative w-full max-w-md">
+        <div className="mb-4 relative w-full max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -323,6 +366,30 @@ export default function AttendanceTracker() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 bg-white border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-burgundy focus:border-transparent transition-all shadow-sm"
           />
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-4 mb-4 text-xs">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded bg-green-100 border-2 border-green-500 flex items-center justify-center">
+              <svg className="w-2.5 h-2.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <span className="text-gray-500 font-medium">Confirmed</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded bg-yellow-50 border-2 border-yellow-400 flex items-center justify-center">
+              <svg className="w-2.5 h-2.5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <span className="text-gray-500 font-medium">Pending Approval</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded bg-gray-100 border border-gray-200"></div>
+            <span className="text-gray-500 font-medium">Not logged</span>
+          </div>
         </div>
 
         {loading ? (
@@ -373,29 +440,26 @@ export default function AttendanceTracker() {
                       {attendee.arabic_name || '-'}
                     </td>
 
-                    {EVENT_DATES.map((date) => (
-                      <td key={date} className="px-4 py-2 whitespace-nowrap border-r border-gray-200 text-center">
-                        <div className="flex justify-center items-center space-x-2">
-                          <div className="flex flex-col items-center">
-                            <span className="text-[10px] font-bold text-brand-burgundy-dark mb-1">AM</span>
-                            <div className={`w-5 h-5 rounded flex items-center justify-center ${hasAttended(attendee.id, date, 'am') ? 'bg-brand-burgundy text-brand-gold' : 'bg-gray-100 border border-gray-200'}`}>
-                              {hasAttended(attendee.id, date, 'am') && (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                              )}
+                    {EVENT_DATES.map((date) => {
+                      const amStatus = getSessionStatus(attendee.id, date, 'am')
+                      const pmStatus = getSessionStatus(attendee.id, date, 'pm')
+
+                      return (
+                        <td key={date} className="px-4 py-2 whitespace-nowrap border-r border-gray-200 text-center">
+                          <div className="flex justify-center items-center space-x-2">
+                            <div className="flex flex-col items-center">
+                              <span className={`text-[10px] font-bold mb-1 ${amStatus ? 'text-gray-600' : 'text-gray-300'}`}>AM</span>
+                              {renderSessionStatus(amStatus)}
+                            </div>
+                            
+                            <div className="flex flex-col items-center">
+                              <span className={`text-[10px] font-bold mb-1 ${pmStatus ? 'text-gray-600' : 'text-gray-300'}`}>PM</span>
+                              {renderSessionStatus(pmStatus)}
                             </div>
                           </div>
-                          
-                          <div className="flex flex-col items-center">
-                            <span className="text-[10px] font-bold text-brand-burgundy-dark mb-1">PM</span>
-                            <div className={`w-5 h-5 rounded flex items-center justify-center ${hasAttended(attendee.id, date, 'pm') ? 'bg-brand-burgundy text-brand-gold' : 'bg-gray-100 border border-gray-200'}`}>
-                              {hasAttended(attendee.id, date, 'pm') && (
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    ))}
+                        </td>
+                      )
+                    })}
 
                   </tr>
                 ))}
@@ -410,7 +474,7 @@ export default function AttendanceTracker() {
                 {attendees.length > 0 && filteredAttendees.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                      No attendees matched your search for "{searchTerm}".
+                      No attendees matched your search for &ldquo;{searchTerm}&rdquo;.
                     </td>
                   </tr>
                 )}
@@ -482,7 +546,6 @@ export default function AttendanceTracker() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">
-                      {/* DISABLED TICKET ID FIELD */}
                       {renderInputField("Ticket ID (Barcode)", "tt_ticket_id", false, true)}
                     </div>
                     <div className="md:col-span-2">
@@ -521,41 +584,66 @@ export default function AttendanceTracker() {
                 <div className="space-y-6">
                   <div className="bg-yellow-50 text-yellow-800 p-4 rounded-lg border border-yellow-200 flex items-center text-sm font-medium">
                     <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    Tick or untick boxes to instantly override this attendee's official session logs.
+                    Tick or untick boxes to instantly override this attendee&apos;s official session logs. Pending requests are shown for reference.
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {EVENT_DATES.map((date, idx) => (
-                      <div key={date} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                        <h4 className="font-bold text-gray-900 text-sm mb-3 border-b border-gray-200 pb-2">
-                          Day {idx + 1} ({date.slice(-5)})
-                        </h4>
-                        
-                        <div className="flex space-x-4">
-                          <label className="flex-1 flex items-center justify-center p-3 rounded-md cursor-pointer border-2 transition-all duration-200 has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 bg-gray-50 border-gray-200 hover:border-brand-burgundy/50">
-                            <input 
-                              type="checkbox" 
-                              className="w-5 h-5 text-brand-burgundy rounded border-gray-300 focus:ring-brand-burgundy"
-                              checked={!!attendanceDraftState[`${date}-am`]}
-                              onChange={() => toggleCheckbox(date, 'am')}
-                              disabled={savingAttendance}
-                            />
-                            <span className="ml-2 font-bold text-gray-700 text-sm">AM</span>
-                          </label>
+                    {EVENT_DATES.map((date, idx) => {
+                      const amPending = currentAttendeeRequests.some(r => r.event_date === date && r.session_type === 'am')
+                      const pmPending = currentAttendeeRequests.some(r => r.event_date === date && r.session_type === 'pm')
+
+                      return (
+                        <div key={date} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                          <h4 className="font-bold text-gray-900 text-sm mb-3 border-b border-gray-200 pb-2">
+                            Day {idx + 1} ({date.slice(-5)})
+                          </h4>
                           
-                          <label className="flex-1 flex items-center justify-center p-3 rounded-md cursor-pointer border-2 transition-all duration-200 has-[:checked]:border-brand-burgundy has-[:checked]:bg-brand-burgundy/5 bg-gray-50 border-gray-200 hover:border-brand-burgundy/50">
-                            <input 
-                              type="checkbox" 
-                              className="w-5 h-5 text-brand-burgundy rounded border-gray-300 focus:ring-brand-burgundy"
-                              checked={!!attendanceDraftState[`${date}-pm`]}
-                              onChange={() => toggleCheckbox(date, 'pm')}
-                              disabled={savingAttendance}
-                            />
-                            <span className="ml-2 font-bold text-gray-700 text-sm">PM</span>
-                          </label>
+                          <div className="flex space-x-4">
+                            <div className="flex-1">
+                              <label className={`flex items-center justify-center p-3 rounded-md cursor-pointer border-2 transition-all duration-200 has-[:checked]:border-green-500 has-[:checked]:bg-green-50 bg-gray-50 border-gray-200 hover:border-green-300 ${savingAttendance ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <input 
+                                  type="checkbox" 
+                                  className="w-5 h-5 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                                  checked={!!attendanceDraftState[`${date}-am`]}
+                                  onChange={() => toggleCheckbox(date, 'am')}
+                                  disabled={savingAttendance}
+                                />
+                                <span className="ml-2 font-bold text-gray-700 text-sm">AM</span>
+                              </label>
+                              {amPending && !attendanceDraftState[`${date}-am`] && (
+                                <div className="mt-1.5 flex items-center justify-center gap-1 text-yellow-600">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span className="text-[10px] font-bold">Pending</span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="flex-1">
+                              <label className={`flex items-center justify-center p-3 rounded-md cursor-pointer border-2 transition-all duration-200 has-[:checked]:border-green-500 has-[:checked]:bg-green-50 bg-gray-50 border-gray-200 hover:border-green-300 ${savingAttendance ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <input 
+                                  type="checkbox" 
+                                  className="w-5 h-5 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                                  checked={!!attendanceDraftState[`${date}-pm`]}
+                                  onChange={() => toggleCheckbox(date, 'pm')}
+                                  disabled={savingAttendance}
+                                />
+                                <span className="ml-2 font-bold text-gray-700 text-sm">PM</span>
+                              </label>
+                              {pmPending && !attendanceDraftState[`${date}-pm`] && (
+                                <div className="mt-1.5 flex items-center justify-center gap-1 text-yellow-600">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                  <span className="text-[10px] font-bold">Pending</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
