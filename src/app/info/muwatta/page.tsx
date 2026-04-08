@@ -69,31 +69,6 @@ export default function MuwattaInfo() {
                 <span><strong>Fiqh deductions:</strong> Imam Malik's own legal deductions, often introduced with the phrase <em>"The generally agreed-upon practice with us is..."</em></span>
               </li>
               
-              {/* ========================================== */}
-              {/* UPDATED: GENERALIZED PDF DOWNLOAD LINK     */}
-              {/* ========================================== */}
-              <li className="flex items-start bg-brand-burgundy/5 p-5 md:p-6 rounded-xl border-2 border-brand-burgundy/20 relative overflow-hidden shadow-sm mt-8">
-                <span className="text-brand-burgundy text-3xl mr-4 leading-none mt-1 hidden sm:block">📖</span>
-                <div className="flex-1">
-                  <strong className="text-brand-burgundy text-xl block mb-2 flex items-center">
-                    <span className="sm:hidden mr-2">📖</span> Download the Text
-                  </strong>
-                  <p className="text-gray-700 mb-5 leading-relaxed">
-                    A digital copy of the Arabic text of Al-Muwatta' is available for you to download, allowing you to easily follow along with the recitation and take notes during the Majlis.
-                  </p>
-                  <a
-                    href="/downloads/muwatta.pdf"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download="Muwatta.pdf"
-                    className="inline-flex items-center justify-center px-6 py-3 bg-brand-burgundy text-brand-gold font-bold rounded-lg hover:bg-brand-burgundy-dark transition-colors shadow-md text-sm md:text-base w-full sm:w-auto"
-                  >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    Download PDF
-                  </a>
-                </div>
-              </li>
-              
             </ul>
           </section>
           

@@ -67,11 +67,7 @@ export default function PurposeInfo() {
             </ul>
           </section>
 
-          {/* ========================================== */}
-          {/* SPONSORSHIP & KHATAM BOOKLET SECTION       */}
-          {/* ADDED: 'z-0' to safely contain the z-index */}
-          {/* ========================================== */}
-          <section className="bg-brand-burgundy text-white p-8 md:p-10 rounded-2xl shadow-lg relative z-0 overflow-hidden border-4 border-brand-burgundy-dark mt-12 mb-12">
+          {/* <section className="bg-brand-burgundy text-white p-8 md:p-10 rounded-2xl shadow-lg relative z-0 overflow-hidden border-4 border-brand-burgundy-dark mt-12 mb-12">
             <div className="absolute -right-10 -top-10 w-40 h-40 bg-brand-gold opacity-10 rounded-full blur-2xl pointer-events-none"></div>
             
             <div className="relative z-10">
@@ -110,7 +106,7 @@ export default function PurposeInfo() {
                 </a>
               </div>
             </div>
-          </section>
+          </section> */}
 
           <section className="pl-6 md:pl-8 border-l-4 border-brand-gold bg-yellow-50/30 py-6 pr-6 rounded-r-xl">
             <h3 className="text-xl font-bold text-brand-burgundy mb-3">The Ultimate Goal: Achieving Ijazah</h3>

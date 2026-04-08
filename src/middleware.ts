@@ -10,8 +10,26 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 }
 
+// 🚫 Routes that are not yet live — block direct URL access
+const DISABLED_ROUTES = [
+  '/info/schedule',
+  '/info/learning-resources',
+  '/attendee/check-in',
+  '/attendee/ijazah-collection',
+]
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
+
+  // 0. Block disabled routes (prevents URL injection for commented-out features)
+  const normalizedPath = path.replace(/\/+$/, '')
+  if (
+    DISABLED_ROUTES.some(
+      route => normalizedPath === route || normalizedPath.startsWith(route + '/')
+    )
+  ) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
 
   // 1. Fix Incomplete URLs
   if (path === '/admin') {
@@ -42,6 +60,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/admin/:path*',
-    '/attendee/:path*'
+    '/attendee/:path*',
+    '/info/:path*',
   ],
 }

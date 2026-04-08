@@ -218,8 +218,8 @@ export default function NavigationShell({
   const eventInfoLinks = [
     { name: 'Purpose of the Majlis', href: '/info/purpose' },
     { name: 'Etiquettes & Adab', href: '/info/etiquettes' },
-    { name: 'Daily Schedule', href: '/info/schedule' },
-    { name: 'Learning Resources', href: '/info/learning-resources' },
+    //{ name: 'Daily Schedule', href: '/info/schedule' },
+    //{ name: 'Learning Resources', href: '/info/learning-resources' },
   ]
 
   const luminariesLinks = [
@@ -230,10 +230,10 @@ export default function NavigationShell({
   ]
 
   const attendeeLinks = [
-    { name: 'Check-In', href: '/attendee/check-in' },
+    //{ name: 'Check-In', href: '/attendee/check-in' },
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
-    { name: 'Ijazah Collection', href: '/attendee/ijazah-collection' }, // ← NEW
+    //{ name: 'Ijazah Collection', href: '/attendee/ijazah-collection' }, // ← NEW
   ]
 
   const adminLinks = [
@@ -254,16 +254,16 @@ export default function NavigationShell({
       '/info/announcements': 'Announcements',
       '/info/purpose': 'Purpose of the Majlis',
       '/info/etiquettes': 'Etiquettes & Adab',
-      '/info/schedule': 'Daily Schedule',
-      '/info/learning-resources': 'Learning Resources',
+      //'/info/schedule': 'Daily Schedule',
+      //'/info/learning-resources': 'Learning Resources',
       '/info/muwatta': 'The Muwatta',
       '/info/imam-malik': 'Imam Malik',
       '/info/shaykh-yaqoubi': 'Shaykh Al-Yaqoubi',
       '/info/guidance-hub': 'Guidance Hub',
-      '/attendee/check-in': 'Check-In',
+      //'/attendee/check-in': 'Check-In',
       '/attendee/register': 'Register Attendance',
       '/attendee/my-details': 'My Details',
-      '/attendee/ijazah-collection': 'Ijazah Collection', // ← NEW
+      //'/attendee/ijazah-collection': 'Ijazah Collection',
       '/attendee/fawaat': 'Fawaat Noticeboard',
       '/admin/attendees': 'Attendees Database',
       '/admin/statistics': 'Dashboard & Stats',
