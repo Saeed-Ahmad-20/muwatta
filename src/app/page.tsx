@@ -48,17 +48,17 @@ export default function Home() {
             >
               Discover the Event
             </Link>
-            <Link 
+            {/* <Link 
               href="/attendee/register" 
               className="px-8 py-4 bg-transparent border-2 border-brand-gold text-brand-gold font-bold rounded-xl text-lg hover:bg-brand-gold/10 transition-all w-full sm:w-auto"
             >
               Access Attendee Portal
-            </Link>
+            </Link> */}
           </div>
 
           {/* Secondary Links (Tickets & Socials) */}
           <div className="pt-8 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4">
-            <a
+            {/* <a
               href="https://www.tickettailor.com/events/guidancehub/2031287"
               target="_blank"
               rel="noopener noreferrer"
@@ -71,7 +71,7 @@ export default function Home() {
               <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
-            </a>
+            </a> */}
 
             <a
               href="https://linktr.ee/shaykhalyaqoubi"

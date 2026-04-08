@@ -2,8 +2,23 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { loginAction, logoutAction } from '@/app/actions'
+
+// ==========================================
+// 🚫 DISABLED ROUTES
+//    These features are not yet available.
+//    Users navigating here directly will be
+//    redirected to the home page.
+//    Must match DISABLED_ROUTES in middleware.ts
+// ==========================================
+const DISABLED_ROUTES = [
+  '/info/schedule',
+  '/info/learning-resources',
+  '/attendee/check-in',
+  '/attendee/ijazah-collection',
+] as const
+// ==========================================
 
 // ==========================================
 // 🔒 CLIENT-SIDE BRUTE FORCE UX
@@ -37,10 +52,27 @@ export default function NavigationShell({
   const [failedAttempts, setFailedAttempts] = useState(0)
   const [lockedUntil, setLockedUntil] = useState<number | null>(null)
   const [lockCountdown, setLockCountdown] = useState(0)
+  const [isBlockedRoute, setIsBlockedRoute] = useState(false)
 
   const pathname = usePathname()
+  const router = useRouter()
   const lastTitleTapRef = useRef(0)
   const formRef = useRef<HTMLFormElement>(null)
+
+  // 🚫 REDIRECT GUARD: Block disabled routes (client-side backup for middleware)
+  useEffect(() => {
+    const normalizedPath = pathname.replace(/\/+$/, '')
+    if (
+      DISABLED_ROUTES.some(
+        route => normalizedPath === route || normalizedPath.startsWith(route + '/')
+      )
+    ) {
+      setIsBlockedRoute(true)
+      router.replace('/')
+    } else {
+      setIsBlockedRoute(false)
+    }
+  }, [pathname, router])
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
@@ -218,8 +250,6 @@ export default function NavigationShell({
   const eventInfoLinks = [
     { name: 'Purpose of the Majlis', href: '/info/purpose' },
     { name: 'Etiquettes & Adab', href: '/info/etiquettes' },
-    { name: 'Daily Schedule', href: '/info/schedule' },
-    { name: 'Learning Resources', href: '/info/learning-resources' },
   ]
 
   const luminariesLinks = [
@@ -230,10 +260,8 @@ export default function NavigationShell({
   ]
 
   const attendeeLinks = [
-    { name: 'Check-In', href: '/attendee/check-in' },
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
-    { name: 'Ijazah Collection', href: '/attendee/ijazah-collection' }, // ← NEW
   ]
 
   const adminLinks = [
@@ -254,16 +282,12 @@ export default function NavigationShell({
       '/info/announcements': 'Announcements',
       '/info/purpose': 'Purpose of the Majlis',
       '/info/etiquettes': 'Etiquettes & Adab',
-      '/info/schedule': 'Daily Schedule',
-      '/info/learning-resources': 'Learning Resources',
       '/info/muwatta': 'The Muwatta',
       '/info/imam-malik': 'Imam Malik',
       '/info/shaykh-yaqoubi': 'Shaykh Al-Yaqoubi',
       '/info/guidance-hub': 'Guidance Hub',
-      '/attendee/check-in': 'Check-In',
       '/attendee/register': 'Register Attendance',
       '/attendee/my-details': 'My Details',
-      '/attendee/ijazah-collection': 'Ijazah Collection', // ← NEW
       '/attendee/fawaat': 'Fawaat Noticeboard',
       '/admin/attendees': 'Attendees Database',
       '/admin/statistics': 'Dashboard & Stats',
@@ -308,6 +332,15 @@ export default function NavigationShell({
           {link.name}
         </span>
       </Link>
+    )
+  }
+
+  // 🚫 While redirecting from a blocked route, show nothing
+  if (isBlockedRoute) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <p className="text-gray-400 text-sm">Redirecting...</p>
+      </div>
     )
   }
 
