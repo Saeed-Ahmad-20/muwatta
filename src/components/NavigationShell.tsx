@@ -250,6 +250,7 @@ export default function NavigationShell({
   const eventInfoLinks = [
     { name: 'Purpose of the Majlis', href: '/info/purpose' },
     { name: 'Etiquettes & Adab', href: '/info/etiquettes' },
+    { name: 'Feedback Box', href: '/info/feedback' },
   ]
 
   const luminariesLinks = [
@@ -262,6 +263,7 @@ export default function NavigationShell({
   const attendeeLinks = [
     { name: 'Register Attendance', href: '/attendee/register' },
     { name: 'My Details', href: '/attendee/my-details' },
+    { name: 'Reflections', href: '/attendee/reflections' },
   ]
 
   const adminLinks = [
@@ -274,6 +276,8 @@ export default function NavigationShell({
     { name: 'Table Creator', href: '/admin/table-creator' },
     { name: 'Manage Announcements', href: '/admin/announcements' },
     { name: 'Ijazah Distribution', href: '/admin/ijazah-station' },
+    { name: 'Reflections Inbox', href: '/admin/reflections' },
+    { name: 'Feedback Inbox', href: '/admin/feedback' },
   ]
 
   const getPageTitle = () => {
@@ -286,9 +290,10 @@ export default function NavigationShell({
       '/info/imam-malik': 'Imam Malik',
       '/info/shaykh-yaqoubi': 'Shaykh Al-Yaqoubi',
       '/info/guidance-hub': 'Guidance Hub',
+      '/info/feedback': 'Feedback Box',
       '/attendee/register': 'Register Attendance',
       '/attendee/my-details': 'My Details',
-      '/attendee/fawaat': 'Fawaat Noticeboard',
+      'attendee/reflections': 'Reflections',
       '/admin/attendees': 'Attendees Database',
       '/admin/statistics': 'Dashboard & Stats',
       '/admin/approvals': 'Detail Approvals',
@@ -298,6 +303,8 @@ export default function NavigationShell({
       '/admin/table-creator': 'Table Creator',
       '/admin/announcements': 'Manage Announcements',
       '/admin/ijazah-station': 'Ijazah Distribution',
+      '/admin/reflections': 'Reflections Inbox',
+      'admin/feedback': 'Feedback Inbox',
     }
 
     if (titles[pathname]) return titles[pathname]
